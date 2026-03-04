@@ -145,13 +145,13 @@ export const generateArchitecturalImage = async (
 export const generateConstructionEstimate = async (house: HouseState): Promise<string> => {
   // Цены на 2026 год (в тенге)
   const PRICE_HOUSE = 550000;
-  const PRICE_BATH = 687500; // Цена жилого метра + 25%
+  const PRICE_BATH = 343750; // Уменьшено в 2 раза
   const PRICE_GARAGE = 350000;
   const PRICE_CARPORT = 65000;
   const PRICE_TERRACE = 150000;
   const PRICE_FENCE = 50000;
   const PRICE_COMMUNICATIONS = 2500000;
-  const PRICE_LANDSCAPING = 30000;
+  const PRICE_LANDSCAPING = 15000; // Уменьшено в 2 раза
 
   // Площади и объемы
   const plotAreaM2 = house.plotWidth * house.plotLength;

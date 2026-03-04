@@ -279,12 +279,12 @@ const LandscapeObject = ({ id, label, pos, color, args, onDragStart, isStepActiv
   };
 
   return (
-    <group position={[pos[0] || 0, 0, pos[1] || 0]} rotation={[0, rotation, 0]} onPointerDown={(e) => { e.stopPropagation(); onSelectObject?.(id); }}>
+    <group position={[pos[0] || 0, 0, pos[1] || 0]} rotation={[0, rotation, 0]} onPointerDown={(e) => { e.stopPropagation(); }}>
       {isCanopy ? (
         <group>
           <mesh position={[0, 0.1, 0]} receiveShadow castShadow onPointerDown={handleDrag}>
             <boxGeometry args={[width, 0.2, depth]} />
-            <meshStandardMaterial color={isSelected ? "#ff5f1f" : color} roughness={0.7} />
+            <meshStandardMaterial color={color} roughness={0.7} />
           </mesh>
           {[[-1,-1], [1,-1], [-1,1], [1,1]].map(([mx, mz], i) => (
             <mesh 
@@ -306,7 +306,7 @@ const LandscapeObject = ({ id, label, pos, color, args, onDragStart, isStepActiv
         <group>
           <mesh position={[0, height / 2 + 0.01, 0]} castShadow receiveShadow onPointerDown={handleDrag}>
             <boxGeometry args={[width, height, depth]} />
-            <meshStandardMaterial color={isSelected ? "#ff5f1f" : color} roughness={0.6} />
+            <meshStandardMaterial color={color} roughness={0.6} />
           </mesh>
         </group>
       )}
@@ -401,9 +401,7 @@ const SceneContent = ({ house, setHouse, showHouse, currentStep, selectedObjectI
         z: house[`${id}PosZ` as keyof HouseState] as number 
       };
     }
-    
-    onSelectObject?.(id); 
-  }, [activeSettingId, onSelectObject, raycaster, camera, house]);
+  }, [activeSettingId, raycaster, camera, house]);
   
   const handleResizeStart = useCallback((type: 'side' | 'corner' | 'gate', id: string, e: any) => { 
     if (activeSettingId) {
@@ -426,8 +424,7 @@ const SceneContent = ({ house, setHouse, showHouse, currentStep, selectedObjectI
     
     dragStartPoint.current = { x: intersection.x, z: intersection.z }; 
     if (corners) originalCorners.current = JSON.parse(JSON.stringify(corners)); 
-    onSelectObject?.('plot');
-  }, [activeSettingId, corners, onSelectObject, raycaster, camera]);
+  }, [activeSettingId, corners, raycaster, camera]);
   
   const handleDragEnd = useCallback(() => { 
     if (draggingItem && tempPos) {
@@ -584,7 +581,7 @@ const SceneContent = ({ house, setHouse, showHouse, currentStep, selectedObjectI
         maxDistance={600} 
         maxPolarAngle={Math.PI / 2.1} 
         makeDefault 
-        target={[houseX, 0, houseZ]}
+        target={[0, 0, 0]}
       />
       
       <Plot 
@@ -596,7 +593,6 @@ const SceneContent = ({ house, setHouse, showHouse, currentStep, selectedObjectI
         onClick={(e:any) => { 
           if (draggingItem) return;
           e.stopPropagation(); 
-          onSelectObject?.('plot'); 
           setActiveSettingId(null);
         }} 
         onUpdateGateSide={(idx, pos) => setHouse(p => ({ 
@@ -610,7 +606,7 @@ const SceneContent = ({ house, setHouse, showHouse, currentStep, selectedObjectI
       <NorthArrow corners={corners} />
       
       {showHouse && (
-        <group position={[houseX, 0, houseZ]} rotation={[0, house.houseRotation || 0, 0]} onPointerDown={(e) => { e.stopPropagation(); onSelectObject?.('house'); }}>
+        <group position={[houseX, 0, houseZ]} rotation={[0, house.houseRotation || 0, 0]} onPointerDown={(e) => { e.stopPropagation(); }}>
           <House state={house} selected={selectedObjectId === 'house'} onDragStart={(e) => handleDragStart('house', e)} />
           <ObjectLabel 
             label="ДОМ" 
@@ -629,7 +625,7 @@ const SceneContent = ({ house, setHouse, showHouse, currentStep, selectedObjectI
         const isAddEditing = activeSettingId === addId;
         const [addX, addZ] = getEffectivePos(addId, add.posX, add.posZ);
         return (
-          <group key={add.id} position={[addX, 0, addZ]} rotation={[0, add.rotation, 0]} onPointerDown={(e) => { e.stopPropagation(); onSelectObject?.(addId); }}>
+          <group key={add.id} position={[addX, 0, addZ]} rotation={[0, add.rotation, 0]} onPointerDown={(e) => { e.stopPropagation(); }}>
             <House state={{ ...house, houseWidth: add.width, houseLength: add.length, floors: add.floors }} isAddition={true} selected={selectedObjectId === addId} onDragStart={(e) => handleDragStart(addId, e)} />
             <ObjectLabel 
               label={`ПРИСТРОЙКА ${idx + 1}`} 

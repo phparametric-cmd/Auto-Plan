@@ -92,7 +92,7 @@ const House: React.FC<HouseProps> = ({ state, isAddition = false, selected = fal
             }}
           >
             <boxGeometry args={[hW, floorHeight, hL]} />
-            <meshStandardMaterial color={selected ? "#ff5f1f" : state.wallColor} roughness={0.6} />
+            <meshStandardMaterial color={state.wallColor} roughness={0.6} />
           </mesh>
           <mesh 
             position={[0, floorHeight/2, 0]}
@@ -104,7 +104,7 @@ const House: React.FC<HouseProps> = ({ state, isAddition = false, selected = fal
             }}
           >
             <boxGeometry args={[hW + 0.1, 0.1, hL + 0.1]} />
-            <meshStandardMaterial color={selected ? "#fb923c" : "#94a3b8"} />
+            <meshStandardMaterial color="#94a3b8" />
           </mesh>
           
           {/* Windows - Only for main house component */}

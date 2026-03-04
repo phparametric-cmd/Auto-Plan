@@ -84,7 +84,7 @@ const INITIAL_STATE: HouseState = {
   planningWishes: "",
   additions: [],
   hasTerrace: false,
-  terraceWidth: 6,
+  terraceWidth: 5,
   terraceDepth: 4,
   terracePosX: 0,
   terracePosZ: -8,

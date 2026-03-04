@@ -327,6 +327,8 @@ const Controls: React.FC<ControlsProps> = ({
     }
     
     const newPlans: FloorPlan[] = [];
+    const totalHouseArea = house.houseWidth * house.houseLength * maxFloors;
+    
     for (let i = 0; i < maxFloors; i++) {
       const floorNum = i + 1;
       let rooms: RoomInfo[] = [];
@@ -338,17 +340,39 @@ const Controls: React.FC<ControlsProps> = ({
           { id: 'f1_kitchen', name: rt.kitchen, area: 15, isLocked: true },
           { id: 'f1_living', name: rt.living, area: 45, isLocked: false }
         );
+        if (totalHouseArea > 200) {
+          rooms.push({ id: 'f1_office', name: 'Кабинет', area: 15, isLocked: false });
+        }
       } else {
-        rooms.push(
-          { id: `f${floorNum}_master`, name: rt.masterSuite, area: 25, isLocked: false },
-          { id: `f${floorNum}_kids`, name: rt.kids, area: 14, isLocked: true },
-          { id: `f${floorNum}_bath`, name: rt.bathroom, area: 6, isLocked: true }
-        );
+        if (totalHouseArea > 300) {
+          rooms.push(
+            { id: `f${floorNum}_master`, name: rt.masterSuite, area: 25, isLocked: false },
+            { id: `f${floorNum}_bed1`, name: 'Спальня 1', area: 16, isLocked: false },
+            { id: `f${floorNum}_bed2`, name: 'Спальня 2', area: 16, isLocked: false },
+            { id: `f${floorNum}_bed3`, name: 'Спальня 3', area: 16, isLocked: false },
+            { id: `f${floorNum}_bath1`, name: rt.bathroom, area: 6, isLocked: true },
+            { id: `f${floorNum}_bath2`, name: 'Санузел 2', area: 6, isLocked: true }
+          );
+        } else if (totalHouseArea > 200) {
+          rooms.push(
+            { id: `f${floorNum}_master`, name: rt.masterSuite, area: 25, isLocked: false },
+            { id: `f${floorNum}_bed1`, name: 'Спальня 1', area: 16, isLocked: false },
+            { id: `f${floorNum}_bed2`, name: 'Спальня 2', area: 16, isLocked: false },
+            { id: `f${floorNum}_bath1`, name: rt.bathroom, area: 6, isLocked: true },
+            { id: `f${floorNum}_bath2`, name: 'Санузел 2', area: 6, isLocked: true }
+          );
+        } else {
+          rooms.push(
+            { id: `f${floorNum}_master`, name: rt.masterSuite, area: 25, isLocked: false },
+            { id: `f${floorNum}_kids`, name: rt.kids, area: 14, isLocked: true },
+            { id: `f${floorNum}_bath`, name: rt.bathroom, area: 6, isLocked: true }
+          );
+        }
       }
       newPlans.push({ floorNumber: floorNum, rooms: balanceFloorRooms(rooms, getAreaForFloor(i)), comment: "" });
     }
     setHouse(p => ({ ...p, calculatedPlan: newPlans }));
-  }, [maxFloors, getAreaForFloor, balanceFloorRooms, setHouse, t.rooms]);
+  }, [maxFloors, getAreaForFloor, balanceFloorRooms, setHouse, t.rooms, house.houseWidth, house.houseLength]);
 
   const updateRoom = (fIdx: number, rId: string, updates: Partial<RoomInfo>) => {
     setHouse(prev => {
@@ -490,10 +514,10 @@ const Controls: React.FC<ControlsProps> = ({
       const isDark = color === '#1e293b' || color === '#0f172a' || color === '#334155';
 
       return (
-        <g key={`${label}-${x}-${z}`} transform={`rotate(${(rotation * 180) / Math.PI}, ${svg.x}, ${svg.y})`}>
-          <rect x={svg.x - sw/2} y={svg.y - sd/2} width={sw} height={sd} fill={color} stroke="#000" strokeWidth="1" />
-          <text x={svg.x} y={svg.y - 2} textAnchor="middle" fill={isDark ? 'white' : 'black'} fontSize={isForExport ? "10" : "7"} fontWeight="900" style={{ textTransform: 'uppercase' }}>{label}</text>
-          <text x={svg.x} y={svg.y + 8} textAnchor="middle" fill={isDark ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.6)'} fontSize={isForExport ? "8" : "5"} fontWeight="bold">{(width || 0).toFixed(1)} x {(depth || 0).toFixed(1)}м</text>
+        <g key={`${label}-${x}-${z}`} transform={`translate(${svg.x}, ${svg.y}) rotate(${-(rotation * 180) / Math.PI})`}>
+          <rect x={-sw/2} y={-sd/2} width={sw} height={sd} fill={color} stroke="#000" strokeWidth="1" />
+          <text x="0" y="-2" textAnchor="middle" fill={isDark ? 'white' : 'black'} fontSize={isForExport ? "10" : "7"} fontWeight="900" style={{ textTransform: 'uppercase' }}>{label}</text>
+          <text x="0" y="8" textAnchor="middle" fill={isDark ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.6)'} fontSize={isForExport ? "8" : "5"} fontWeight="bold">{(width || 0).toFixed(1)} x {(depth || 0).toFixed(1)}м</text>
         </g>
       );
     };
@@ -630,7 +654,7 @@ const Controls: React.FC<ControlsProps> = ({
       {isMobile && isHouseOutOfBounds && (
         <div className="fixed top-[60px] left-4 right-4 z-[1000] bg-red-500 text-white p-3 rounded-xl text-[10px] font-bold uppercase flex items-start gap-2 shadow-2xl animate-in fade-in slide-in-from-top-4">
           <i className="fas fa-exclamation-triangle mt-0.5 text-red-200"></i>
-          <span className="leading-relaxed">Внимание: Дом не помещается на участок. Уменьшите размеры дома, чтобы соблюсти отступы 3 метра от границ участка.</span>
+          <span className="leading-relaxed">Внимание: Дом не помещается на участок. Уменьшите размеры дома или сместите его, чтобы соблюсти отступы 3 метра от границ участка.</span>
         </div>
       )}
 
@@ -1130,7 +1154,7 @@ const Controls: React.FC<ControlsProps> = ({
                   {!isMobile && isHouseOutOfBounds && (
                     <div className="bg-red-500 text-white p-3 lg:p-4 rounded-xl lg:rounded-2xl text-[9px] lg:text-[11px] font-bold uppercase flex items-start gap-3 shadow-lg animate-in fade-in slide-in-from-top-2">
                       <i className="fas fa-exclamation-triangle mt-0.5 text-red-200 text-sm lg:text-base"></i>
-                      <span className="leading-relaxed">Внимание: Дом не помещается на участок. Уменьшите размеры дома, чтобы соблюсти отступы 3 метра от границ участка.</span>
+                      <span className="leading-relaxed">Внимание: Дом не помещается на участок. Уменьшите размеры дома или сместите его, чтобы соблюсти отступы 3 метра от границ участка.</span>
                     </div>
                   )}
                   <Slider label={t.width} value={house.houseWidth} min={4} max={Math.max(30, house.plotWidth)} onChange={(v: number) => setHouseAndValidate({ houseWidth: v })} />

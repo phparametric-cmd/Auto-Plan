@@ -1,0 +1,7 @@
+{
+  "name": "Auto Plan ",
+  "description": "A creative 3D house building experience powered by Three.js and Gemini AI. Design your dream home with real-time scaling and AI-generated architectural themes.",
+  "requestFramePermissions": [
+    "geolocation"
+  ]
+}

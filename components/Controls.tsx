@@ -183,6 +183,40 @@ const Controls: React.FC<ControlsProps> = ({
     return !houseCorners.every(c => isInside(c, v));
   }, [house]);
 
+  const handleGoogleSignIn = async () => {
+    try {
+      const response = await fetch('/api/auth/url?redirectUri=' + encodeURIComponent(window.location.origin + '/auth/callback'));
+      if (!response.ok) throw new Error('Failed to get auth URL');
+      const { url } = await response.json();
+
+      const authWindow = window.open(url, 'oauth_popup', 'width=600,height=700');
+      if (!authWindow) {
+        alert('Пожалуйста, разрешите всплывающие окна для авторизации.');
+      }
+    } catch (error) {
+      console.error('OAuth error:', error);
+    }
+  };
+
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      const origin = event.origin;
+      if (!origin.endsWith('.run.app') && !origin.includes('localhost')) return;
+      
+      if (event.data?.type === 'OAUTH_AUTH_SUCCESS') {
+        const user = event.data.user;
+        setHouse(p => ({
+          ...p,
+          userName: user.name || p.userName,
+          userEmail: user.email || p.userEmail,
+          userAvatar: user.picture || p.userAvatar
+        }));
+      }
+    };
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, [setHouse]);
+
   const handleOrderSilent = async () => {
     if (!hasUnsavedChanges || !house.userEmail) return;
     try {
@@ -651,7 +685,7 @@ const Controls: React.FC<ControlsProps> = ({
   return (
     <>
       {/* Mobile Warning */}
-      {isMobile && isHouseOutOfBounds && (
+      {isMobile && currentStep === 1 && isHouseOutOfBounds && (
         <div className="fixed top-[60px] left-4 right-4 z-[1000] bg-red-500 text-white p-3 rounded-xl text-[10px] font-bold uppercase flex items-start gap-2 shadow-2xl animate-in fade-in slide-in-from-top-4">
           <i className="fas fa-exclamation-triangle mt-0.5 text-red-200"></i>
           <span className="leading-relaxed">Внимание: Дом не помещается на участок. Уменьшите размеры дома или сместите его, чтобы соблюсти отступы 3 метра от границ участка.</span>
@@ -1397,12 +1431,46 @@ const Controls: React.FC<ControlsProps> = ({
                     <p className="text-[10px] lg:text-[12px] font-black text-[#ff5f1f] uppercase tracking-widest">для получение расчетов напиши сою почту и нажми скачать проект</p>
                   </div>
                   <input 
-                    type="email" 
-                    value={house.userEmail} 
-                    onChange={e => setHouse(p => ({...p, userEmail: e.target.value}))} 
-                    className={`w-full bg-slate-50 border rounded-lg lg:rounded-xl px-3 lg:px-4 py-3 lg:py-4 text-[14px] lg:text-[16px] font-bold outline-none transition-all ${house.userEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(house.userEmail) ? 'border-red-300 bg-red-50' : 'border-slate-100 focus:border-[#ff5f1f]'}`} 
-                    placeholder="Ваш Email..." 
+                    type="tel" 
+                    value={house.userPhone} 
+                    onChange={e => setHouse(p => ({...p, userPhone: e.target.value}))} 
+                    className="w-full bg-slate-50 border border-slate-100 rounded-lg lg:rounded-xl px-3 lg:px-4 py-3 lg:py-4 text-[14px] lg:text-[16px] font-bold outline-none focus:border-[#ff5f1f] transition-all" 
+                    placeholder="Ваш Телефон..." 
                   />
+                  
+                  {house.userEmail && house.userAvatar ? (
+                    <div className="flex items-center gap-3 p-3 bg-slate-50 border border-slate-100 rounded-xl lg:rounded-2xl">
+                      <img src={house.userAvatar} alt="Avatar" className="w-10 h-10 rounded-full" referrerPolicy="no-referrer" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[12px] font-bold text-slate-900 truncate">{house.userName}</p>
+                        <p className="text-[10px] text-slate-500 truncate">{house.userEmail}</p>
+                      </div>
+                      <button 
+                        onClick={() => setHouse(p => ({...p, userEmail: '', userName: '', userAvatar: ''}))}
+                        className="text-slate-400 hover:text-red-500 text-[10px] uppercase font-bold px-2 py-1"
+                      >
+                        Выйти
+                      </button>
+                    </div>
+                  ) : (
+                    <button 
+                      onClick={handleGoogleSignIn}
+                      className="w-full py-3 lg:py-4 bg-white border border-slate-200 text-slate-700 rounded-xl lg:rounded-2xl font-black uppercase text-[10px] lg:text-[11px] flex items-center justify-center gap-2 hover:bg-slate-50 transition-all shadow-sm"
+                    >
+                      <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" className="w-4 h-4" />
+                      Войти через Google
+                    </button>
+                  )}
+
+                  {!house.userAvatar && (
+                    <input 
+                      type="email" 
+                      value={house.userEmail} 
+                      onChange={e => setHouse(p => ({...p, userEmail: e.target.value}))} 
+                      className={`w-full bg-slate-50 border rounded-lg lg:rounded-xl px-3 lg:px-4 py-3 lg:py-4 text-[14px] lg:text-[16px] font-bold outline-none transition-all ${house.userEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(house.userEmail) ? 'border-red-300 bg-red-50' : 'border-slate-100 focus:border-[#ff5f1f]'}`} 
+                      placeholder="Ваш Email..." 
+                    />
+                  )}
                   <div className="space-y-3">
                     <button 
                       onClick={() => { handleDownloadPassport(); if(house.userEmail) handleOrderSilent(); }} 

@@ -85,6 +85,7 @@ export interface HouseState {
   userName: string;
   userPhone: string;
   userEmail: string;
+  userAvatar?: string;
   type: HouseType;
   format: LivingFormat;
   styleDescription: string;

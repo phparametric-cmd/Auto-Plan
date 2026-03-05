@@ -7,7 +7,7 @@ import { jsPDF } from 'jspdf';
  * Масштабирует контент по ширине листа A4 (210мм) и автоматически подбирает высоту страницы,
  * чтобы весь контент поместился на одной странице без разрывов.
  */
-export const generatePDFBlob = async (element: HTMLElement, fileName: string): Promise<Blob> => {
+export const generatePDFBlob = async (element: HTMLElement, fileName: string): Promise<{blob: Blob, imgData: string}> => {
   if (!element) throw new Error("Element for PDF generation not found.");
   await new Promise(resolve => setTimeout(resolve, 1000)); // Ждем отрисовку
 
@@ -43,7 +43,7 @@ export const generatePDFBlob = async (element: HTMLElement, fileName: string): P
 
     pdf.addImage(imgData, 'JPEG', margin, margin, finalWidth, finalHeight);
 
-    return pdf.output('blob');
+    return { blob: pdf.output('blob'), imgData };
   } catch (error) {
     console.error(`[pdfService] Failed to generate PDF:`, error);
     throw error;

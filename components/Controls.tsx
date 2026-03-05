@@ -107,6 +107,7 @@ const Controls: React.FC<ControlsProps> = ({
   const [isDownloadingPassport, setIsDownloadingPassport] = useState(false);
   const [isDownloadingCalc, setIsDownloadingCalc] = useState(false);
   const [isDownloadingEstimate, setIsDownloadingEstimate] = useState(false);
+  const [isSendingTelegram, setIsSendingTelegram] = useState(false);
   const [estimateHtml, setEstimateHtml] = useState<string>("");
   const [isOrdering, setIsOrdering] = useState(false);
   const [orderSuccess, setOrderSuccess] = useState(false);
@@ -116,6 +117,10 @@ const Controls: React.FC<ControlsProps> = ({
   const hasEnteredStep1 = useRef(false);
   const [orderError, setOrderError] = useState<string | null>(null);
   const sitePlanExportRef = useRef<HTMLDivElement>(null);
+
+  const [previewPdfUrl, setPreviewPdfUrl] = useState<string | null>(null);
+  const [previewPdfName, setPreviewPdfName] = useState<string>("");
+  const [previewPdfBlob, setPreviewPdfBlob] = useState<Blob | null>(null);
 
   useEffect(() => {
     if (currentStep === 1) {
@@ -217,6 +222,47 @@ const Controls: React.FC<ControlsProps> = ({
     return () => window.removeEventListener('message', handleMessage);
   }, [setHouse]);
 
+  const handleSendToTelegram = async () => {
+    if (!house.userName || !house.userPhone) {
+      alert("Пожалуйста, укажите ваше имя и телефон перед отправкой в Telegram.");
+      return;
+    }
+    setIsSendingTelegram(true);
+    try {
+      const sitePlanEl = sitePlanExportRef.current;
+      if (!sitePlanEl) throw new Error("Site plan element not found");
+      const canvas = await html2canvas(sitePlanEl, { scale: 2, backgroundColor: '#ffffff' });
+      const sitePlanUrl = canvas.toDataURL('image/png');
+
+      // Telegram deep links only allow A-Z, a-z, 0-9, _, and -.
+      // We generate a safe unique ID for this session.
+      const telegramId = `proj_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 8)}`;
+
+      const response = await fetch('/api/save-project-for-telegram', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          projectId: telegramId,
+          houseData: house,
+          sitePlanUrl
+        })
+      });
+
+      if (!response.ok) throw new Error("Failed to save project");
+
+      const botRes = await fetch('/api/telegram-bot-info');
+      if (!botRes.ok) throw new Error("Failed to get bot info");
+      const { username } = await botRes.json();
+
+      window.open(`https://t.me/${username}?start=${telegramId}`, '_blank');
+    } catch (error) {
+      console.error("Telegram error:", error);
+      alert("Произошла ошибка при подготовке проекта для Telegram.");
+    } finally {
+      setIsSendingTelegram(false);
+    }
+  };
+
   const handleOrderSilent = async () => {
     if (!hasUnsavedChanges || !house.userEmail) return;
     try {
@@ -237,9 +283,9 @@ const Controls: React.FC<ControlsProps> = ({
         const sitePlanCanvas = await html2canvas(sitePlanEl, { scale: 2, backgroundColor: '#ffffff' });
         const sitePlanUrl = sitePlanCanvas.toDataURL('image/png');
         
-        const passportBlob = await generatePDFBlob(passportEl, `Passport_${house.name}`);
-        const calculationBlob = await generatePDFBlob(calcEl, `Calculation_${house.name}`);
-        const estimateBlob = estimateEl ? await generatePDFBlob(estimateEl, `Estimate_${house.name}`) : undefined;
+        const { blob: passportBlob } = await generatePDFBlob(passportEl, `Passport_${house.name}`);
+        const { blob: calculationBlob } = await generatePDFBlob(calcEl, `Calculation_${house.name}`);
+        const { blob: estimateBlob } = estimateEl ? await generatePDFBlob(estimateEl, `Estimate_${house.name}`) : { blob: undefined };
 
         const success = await processProjectOrder({ 
             house: { ...house, sitePlanUrl }, 
@@ -464,27 +510,31 @@ const Controls: React.FC<ControlsProps> = ({
     });
   };
 
-  const handleDownloadPassport = async () => {
+  const handlePreviewPassport = async () => {
     const el = document.getElementById('passport-doc-root');
     if (!el) return;
     setIsDownloadingPassport(true);
     try {
-      const passportBlob = await generatePDFBlob(el, `Passport_${house.name}`);
-      saveAs(passportBlob, `Passport_${house.name}.pdf`);
+      const { blob: passportBlob, imgData } = await generatePDFBlob(el, `Passport_${house.name}`);
+      setPreviewPdfBlob(passportBlob);
+      setPreviewPdfName(`Passport_${house.name}.pdf`);
+      setPreviewPdfUrl(imgData);
     } catch (e) { console.error(e); } finally { setIsDownloadingPassport(false); }
   };
 
-  const handleDownloadCalculation = async () => {
+  const handlePreviewCalculation = async () => {
     const el = document.getElementById('calculation-doc-root');
     if (!el) return;
     setIsDownloadingCalc(true);
     try {
-      const calculationBlob = await generatePDFBlob(el, `Calculation_${house.name}`);
-      saveAs(calculationBlob, `Calculation_${house.name}.pdf`);
+      const { blob: calculationBlob, imgData } = await generatePDFBlob(el, `Calculation_${house.name}`);
+      setPreviewPdfBlob(calculationBlob);
+      setPreviewPdfName(`Calculation_${house.name}.pdf`);
+      setPreviewPdfUrl(imgData);
     } catch (e) { console.error(e); } finally { setIsDownloadingCalc(false); }
   };
 
-  const handleDownloadEstimate = async () => {
+  const handlePreviewEstimate = async () => {
     setIsDownloadingEstimate(true);
     try {
       let currentHtml = estimateHtml;
@@ -499,8 +549,10 @@ const Controls: React.FC<ControlsProps> = ({
       const el = document.getElementById('estimate-doc-root');
       if (!el) return;
       
-      const estimateBlob = await generatePDFBlob(el, `Estimate_${house.name}`);
-      saveAs(estimateBlob, `Estimate_${house.name}.pdf`);
+      const { blob: estimateBlob, imgData } = await generatePDFBlob(el, `Estimate_${house.name}`);
+      setPreviewPdfBlob(estimateBlob);
+      setPreviewPdfName(`Estimate_${house.name}.pdf`);
+      setPreviewPdfUrl(imgData);
     } catch (e) { 
       console.error(e); 
     } finally { 
@@ -655,9 +707,9 @@ const Controls: React.FC<ControlsProps> = ({
         const sitePlanCanvas = await html2canvas(sitePlanEl, { scale: 2, backgroundColor: '#ffffff' });
         const sitePlanUrl = sitePlanCanvas.toDataURL('image/png');
         
-        const passportBlob = await generatePDFBlob(passportEl, `Passport_${house.name}`);
-        const calculationBlob = await generatePDFBlob(calcEl, `Calculation_${house.name}`);
-        const estimateBlob = estimateEl ? await generatePDFBlob(estimateEl, `Estimate_${house.name}`) : undefined;
+        const { blob: passportBlob } = await generatePDFBlob(passportEl, `Passport_${house.name}`);
+        const { blob: calculationBlob } = await generatePDFBlob(calcEl, `Calculation_${house.name}`);
+        const { blob: estimateBlob } = estimateEl ? await generatePDFBlob(estimateEl, `Estimate_${house.name}`) : { blob: undefined };
 
         const success = await processProjectOrder({ 
             house: { ...house, sitePlanUrl }, 
@@ -1473,25 +1525,32 @@ const Controls: React.FC<ControlsProps> = ({
                   )}
                   <div className="space-y-3">
                     <button 
-                      onClick={() => { handleDownloadPassport(); if(house.userEmail) handleOrderSilent(); }} 
-                      disabled={!house.userEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(house.userEmail) || !hasUnsavedChanges}
+                      onClick={() => { handlePreviewPassport(); if(house.userEmail) handleOrderSilent(); }} 
+                      disabled={!house.userEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(house.userEmail)}
                       className="w-full py-3 lg:py-4 bg-[#0f172a] text-white rounded-xl lg:rounded-2xl font-black uppercase text-[10px] lg:text-[11px] flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <i className={`fas ${isDownloadingPassport ? 'fa-spinner fa-spin' : 'fa-file-pdf'} text-[12px] lg:text-base`}></i>ПАСПОРТ PDF
                     </button>
                     <button 
-                      onClick={() => { handleDownloadCalculation(); if(house.userEmail) handleOrderSilent(); }} 
-                      disabled={!house.userEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(house.userEmail) || !hasUnsavedChanges}
+                      onClick={() => { handlePreviewCalculation(); if(house.userEmail) handleOrderSilent(); }} 
+                      disabled={!house.userEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(house.userEmail)}
                       className="w-full py-3 lg:py-4 bg-[#ff5f1f] text-white rounded-xl lg:rounded-2xl font-black uppercase text-[10px] lg:text-[11px] flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <i className={`fas ${isDownloadingCalc ? 'fa-spinner fa-spin' : 'fa-file-invoice-dollar'} text-[12px] lg:text-base`}></i>Стоимость проектирования
                     </button>
                     <button 
-                      onClick={() => { handleDownloadEstimate(); if(house.userEmail) handleOrderSilent(); }} 
-                      disabled={!house.userEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(house.userEmail) || !hasUnsavedChanges}
+                      onClick={() => { handlePreviewEstimate(); if(house.userEmail) handleOrderSilent(); }} 
+                      disabled={!house.userEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(house.userEmail)}
                       className="w-full py-3 lg:py-4 bg-slate-100 text-slate-900 rounded-xl lg:rounded-2xl font-black uppercase text-[10px] lg:text-[11px] flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <i className={`fas ${isDownloadingEstimate ? 'fa-spinner fa-spin' : 'fa-file-invoice'} text-[12px] lg:text-base`}></i>Стоимость строительства
+                    </button>
+                    <button 
+                      onClick={() => { handleSendToTelegram(); if(house.userEmail) handleOrderSilent(); }}
+                      disabled={isSendingTelegram || !house.userPhone}
+                      className="w-full py-3 lg:py-4 bg-[#0088cc] text-white rounded-xl lg:rounded-2xl font-black uppercase text-[10px] lg:text-[11px] flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#0077b3] transition-all"
+                    >
+                      <i className={`fab ${isSendingTelegram ? 'fa-spinner fa-spin' : 'fa-telegram-plane'} text-[12px] lg:text-base`}></i>Получить в Telegram
                     </button>
                   </div>
                   {orderError && (
@@ -1518,6 +1577,38 @@ const Controls: React.FC<ControlsProps> = ({
       <div className="fixed -left-[15000px] top-0 pointer-events-none">
         <EstimateView house={house} estimateHtml={estimateHtml} />
       </div>
+
+      {/* PDF Preview Modal */}
+      {previewPdfUrl && (
+        <div className="fixed inset-0 z-[10000] flex flex-col bg-slate-100 overflow-hidden">
+          <div className="flex items-center justify-between p-4 border-b bg-white shadow-sm shrink-0">
+            <h3 className="font-bold text-lg text-slate-800">{previewPdfName}</h3>
+            <div className="flex items-center gap-3">
+              <button 
+                onClick={() => {
+                  if (previewPdfBlob) saveAs(previewPdfBlob, previewPdfName);
+                }}
+                className="px-6 py-2.5 bg-[#ff5f1f] text-white rounded-xl font-black uppercase text-[12px] hover:bg-[#e04d14] flex items-center gap-2 transition-colors shadow-lg"
+              >
+                <i className="fas fa-download"></i> Скачать PDF
+              </button>
+              <button 
+                onClick={() => {
+                  setPreviewPdfUrl(null);
+                  setPreviewPdfBlob(null);
+                  setPreviewPdfName("");
+                }}
+                className="w-10 h-10 flex items-center justify-center rounded-full bg-slate-200 hover:bg-slate-300 text-slate-600 transition-colors"
+              >
+                <i className="fas fa-times"></i>
+              </button>
+            </div>
+          </div>
+          <div className="flex-1 overflow-auto flex justify-center p-4 lg:p-8">
+            <img src={previewPdfUrl} className="max-w-full h-auto object-contain shadow-2xl bg-white" alt="PDF Preview" />
+          </div>
+        </div>
+      )}
     </>
   );
 };

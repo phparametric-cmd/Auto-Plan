@@ -242,14 +242,7 @@ const ObjectSettingsOverlay = ({ id, house, setHouse, onClose, t, isXFlashing }:
     </div>
   );
 
-  return (
-    <Html 
-      fullscreen={true}
-      zIndexRange={[1000, 1100]}
-    >
-      {content}
-    </Html>
-  );
+  return content;
 };
 
 const ObjectLabel = ({ label, width, length, height, onToggleEdit, isEditing, onDragStart }: any) => (
@@ -703,15 +696,6 @@ const SceneContent = ({ house, setHouse, showHouse, currentStep, selectedObjectI
         <ContactShadows opacity={0.4} scale={200} blur={2.5} far={40} />
       </Suspense>
 
-      <ObjectSettingsOverlay 
-        id={activeSettingId} 
-        house={house} 
-        setHouse={setHouse} 
-        onClose={() => setActiveSettingId(null)} 
-        t={t}
-        isXFlashing={isXFlashing}
-      />
-
       {(draggingItem || resizingCorner || draggingGate) && (
         <mesh rotation={[-Math.PI/2,0,0]} position={[0,-0.05,0]}>
           <planeGeometry args={[4000,4000]}/>
@@ -745,6 +729,14 @@ const Scene: React.FC<SceneProps> = (props) => {
           <SceneContent {...props} activeSettingId={activeSettingId} setActiveSettingId={setActiveSettingId} onTriggerXFlash={triggerXFlash} isXFlashing={isXFlashing} />
         </Suspense>
       </Canvas>
+      <ObjectSettingsOverlay 
+        id={activeSettingId} 
+        house={props.house} 
+        setHouse={props.setHouse} 
+        onClose={() => setActiveSettingId(null)} 
+        t={t}
+        isXFlashing={isXFlashing}
+      />
     </div>
   );
 };

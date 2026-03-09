@@ -563,10 +563,51 @@ const Controls: React.FC<ControlsProps> = ({
         sw: { x: -house.plotWidth / 2, z: house.plotLength / 2 }
     };
 
-    const minX = Math.min(corners.nw.x, corners.ne.x, corners.se.x, corners.sw.x);
-    const maxX = Math.max(corners.nw.x, corners.ne.x, corners.se.x, corners.sw.x);
-    const minZ = Math.min(corners.nw.z, corners.ne.z, corners.se.z, corners.sw.z);
-    const maxZ = Math.max(corners.nw.z, corners.ne.z, corners.se.z, corners.sw.z);
+    const vertices = corners.vertices || [corners.nw, corners.ne, corners.se, corners.sw];
+    let minX = Math.min(...vertices.map(p => p.x));
+    let maxX = Math.max(...vertices.map(p => p.x));
+    let minZ = Math.min(...vertices.map(p => p.z));
+    let maxZ = Math.max(...vertices.map(p => p.z));
+
+    const getRectBounds = (x: number, z: number, w: number, d: number, rot: number) => {
+      const cos = Math.cos(rot);
+      const sin = Math.sin(rot);
+      const hw = w / 2;
+      const hd = d / 2;
+      const pts = [
+        { x: x + hw * cos - hd * sin, z: z + hw * sin + hd * cos },
+        { x: x - hw * cos - hd * sin, z: z - hw * sin + hd * cos },
+        { x: x + hw * cos + hd * sin, z: z + hw * sin - hd * cos },
+        { x: x - hw * cos + hd * sin, z: z - hw * sin - hd * cos },
+      ];
+      return {
+        minX: Math.min(...pts.map(p => p.x)),
+        maxX: Math.max(...pts.map(p => p.x)),
+        minZ: Math.min(...pts.map(p => p.z)),
+        maxZ: Math.max(...pts.map(p => p.z)),
+      };
+    };
+
+    const expandBounds = (bounds: {minX: number, maxX: number, minZ: number, maxZ: number}) => {
+      minX = Math.min(minX, bounds.minX);
+      maxX = Math.max(maxX, bounds.maxX);
+      minZ = Math.min(minZ, bounds.minZ);
+      maxZ = Math.max(maxZ, bounds.maxZ);
+    };
+
+    expandBounds(getRectBounds(house.housePosX, house.housePosZ, house.houseWidth, house.houseLength, house.houseRotation || 0));
+    
+    house.additions.forEach(add => {
+      expandBounds(getRectBounds(add.posX, add.posZ, add.width, add.length, add.rotation || 0));
+    });
+
+    if (house.hasPool) expandBounds(getRectBounds(house.poolPosX, house.poolPosZ, house.poolWidth, house.poolDepth, house.poolRotation || 0));
+    if (house.hasTerrace) expandBounds(getRectBounds(house.terracePosX, house.terracePosZ, house.terraceWidth, house.terraceDepth, house.terraceRotation || 0));
+    if (house.hasBath) expandBounds(getRectBounds(house.bathPosX, house.bathPosZ, house.bathWidth, house.bathDepth, house.bathRotation || 0));
+    if (house.hasBBQ) expandBounds(getRectBounds(house.bbqPosX, house.bbqPosZ, house.bbqWidth, house.bbqDepth, house.bbqRotation || 0));
+    if (house.hasCustomObj) expandBounds(getRectBounds(house.customObjPosX, house.customObjPosZ, house.customObjWidth, house.customObjDepth, house.customObjRotation || 0));
+    if (house.hasGarage) expandBounds(getRectBounds(house.garagePosX, house.garagePosZ, getGarageWidth(house.garageCars, isSmallPlot), isSmallPlot ? 3.25 : 6.5, house.garageRotation || 0));
+    if (house.hasCarport) expandBounds(getRectBounds(house.carportPosX, house.carportPosZ, getCarportWidth(house.carportCars, isSmallPlot), isSmallPlot ? 3.0 : 6.0, house.carportRotation || 0));
     
     const plotW = maxX - minX;
     const plotL = maxZ - minZ;

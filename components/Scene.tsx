@@ -49,7 +49,7 @@ const RotationControl = ({ label, value, onChange }: { label: string, value: num
       <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-lg">
         <button 
           onPointerDown={(e) => e.stopPropagation()}
-          onClick={(e) => { e.stopPropagation(); onChange(value - (10 * Math.PI / 180)); }}
+          onClick={(e) => { e.stopPropagation(); onChange(value - (5 * Math.PI / 180)); }}
           className="w-6 h-6 rounded bg-white flex items-center justify-center text-slate-400 hover:text-[#ff5f1f] active:scale-90 transition-all shadow-sm"
         >
           <i className="fas fa-undo text-[10px]"></i>
@@ -57,7 +57,7 @@ const RotationControl = ({ label, value, onChange }: { label: string, value: num
         <span className="flex-1 text-center text-[12px] font-black text-slate-900">{degrees}°</span>
         <button 
           onPointerDown={(e) => e.stopPropagation()}
-          onClick={(e) => { e.stopPropagation(); onChange(value + (10 * Math.PI / 180)); }}
+          onClick={(e) => { e.stopPropagation(); onChange(value + (5 * Math.PI / 180)); }}
           className="w-6 h-6 rounded bg-white flex items-center justify-center text-slate-400 hover:text-[#ff5f1f] active:scale-90 transition-all shadow-sm"
         >
           <i className="fas fa-redo text-[10px]"></i>
@@ -67,7 +67,40 @@ const RotationControl = ({ label, value, onChange }: { label: string, value: num
   );
 };
 
-const ObjectSettingsOverlay = ({ id, house, setHouse, onClose, t, isXFlashing, pos }: any) => {
+const ObjectSettingsOverlay = ({ id, house, setHouse, onClose, t, isXFlashing }: any) => {
+  const [position, setPosition] = useState({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
+  const [isDragging, setIsDragging] = useState(false);
+  const overlayRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handlePointerMove = (e: PointerEvent) => {
+      if (!isDragging || !overlayRef.current) return;
+      const rect = overlayRef.current.getBoundingClientRect();
+      setPosition(prev => {
+        const newX = prev.x + e.movementX;
+        const newY = prev.y + e.movementY;
+        const minX = rect.width / 2;
+        const maxX = window.innerWidth - rect.width / 2;
+        const minY = rect.height / 2;
+        const maxY = window.innerHeight - rect.height / 2;
+        return {
+          x: Math.max(minX, Math.min(maxX, newX)),
+          y: Math.max(minY, Math.min(maxY, newY))
+        };
+      });
+    };
+    const handlePointerUp = () => setIsDragging(false);
+
+    if (isDragging) {
+      window.addEventListener('pointermove', handlePointerMove);
+      window.addEventListener('pointerup', handlePointerUp);
+    }
+    return () => {
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', handlePointerUp);
+    };
+  }, [isDragging]);
+
   if (!id) return null;
 
   const handleUpdate = (updates: any) => {
@@ -123,10 +156,25 @@ const ObjectSettingsOverlay = ({ id, house, setHouse, onClose, t, isXFlashing, p
   const isMobile = window.innerWidth < 1024;
 
   const content = (
-    <div className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[240px] max-h-[60vh] lg:max-h-[80vh] bg-white/95 backdrop-blur-2xl p-3 lg:p-4 rounded-[24px] lg:rounded-[32px] shadow-[0_20px_40px_rgba(0,0,0,0.15)] border border-white/50 flex flex-col gap-2 lg:gap-3 animate-in fade-in zoom-in-95 duration-300 z-[1000] pointer-events-auto overflow-y-auto scrollbar-hide">
-      <div className="flex items-center justify-between pb-1.5 lg:pb-2 border-b border-slate-100 sticky top-0 bg-white/95 z-10">
-        <span className="text-[12px] lg:text-[14px] font-black uppercase tracking-[0.15em] text-[#ff5f1f]">{label}</span>
-        <button onClick={onClose} className={`w-7 h-7 lg:w-8 lg:h-8 rounded-full flex items-center justify-center transition-all duration-300 ${isXFlashing ? 'bg-red-500 text-white scale-110 shadow-[0_0_10px_rgba(239,68,68,0.4)]' : 'bg-slate-50 text-slate-300 hover:text-slate-900'}`}>
+    <div 
+      ref={overlayRef}
+      className="fixed w-[240px] max-h-[60vh] lg:max-h-[80vh] bg-white/95 backdrop-blur-2xl p-3 lg:p-4 rounded-[24px] lg:rounded-[32px] shadow-[0_20px_40px_rgba(0,0,0,0.15)] border border-white/50 flex flex-col gap-2 lg:gap-3 animate-in fade-in zoom-in-95 duration-300 z-[1000] pointer-events-auto overflow-y-auto scrollbar-hide"
+      style={{ left: position.x, top: position.y, transform: 'translate(-50%, -50%)' }}
+      onPointerDown={(e) => e.stopPropagation()}
+    >
+      <div 
+        className="flex items-center justify-between pb-1.5 lg:pb-2 border-b border-slate-100 sticky top-0 bg-white/95 z-10 cursor-move touch-none"
+        onPointerDown={(e) => {
+          setIsDragging(true);
+          e.stopPropagation();
+        }}
+      >
+        <span className="text-[12px] lg:text-[14px] font-black uppercase tracking-[0.15em] text-[#ff5f1f] pointer-events-none">{label}</span>
+        <button 
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={onClose} 
+          className={`w-7 h-7 lg:w-8 lg:h-8 rounded-full flex items-center justify-center transition-all duration-300 ${isXFlashing ? 'bg-red-500 text-white scale-110 shadow-[0_0_10px_rgba(239,68,68,0.4)]' : 'bg-slate-50 text-slate-300 hover:text-slate-900'}`}
+        >
           <i className="fas fa-times text-[9px] lg:text-[10px]"></i>
         </button>
       </div>
@@ -662,16 +710,6 @@ const SceneContent = ({ house, setHouse, showHouse, currentStep, selectedObjectI
         onClose={() => setActiveSettingId(null)} 
         t={t}
         isXFlashing={isXFlashing}
-        pos={activeSettingId === 'house' ? [houseX, 5, houseZ] : (activeSettingId?.startsWith('add_') ? (() => {
-          const add = house.additions.find((a: any) => `add_${a.id}` === activeSettingId);
-          const [ax, az] = getEffectivePos(activeSettingId || '', add?.posX || 0, add?.posZ || 0);
-          return [ax, 5, az];
-        })() : (() => {
-          const px = house[`${activeSettingId}PosX` as keyof HouseState] as number || 0;
-          const pz = house[`${activeSettingId}PosZ` as keyof HouseState] as number || 0;
-          const [ax, az] = getEffectivePos(activeSettingId || '', px, pz);
-          return [ax, 5, az];
-        })())}
       />
 
       {(draggingItem || resizingCorner || draggingGate) && (

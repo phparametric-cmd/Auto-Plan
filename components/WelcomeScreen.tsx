@@ -1,5 +1,5 @@
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { HouseState, HouseType, Language } from '../types';
 import { getTranslation } from '../services/i18n';
 
@@ -51,6 +51,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onStart, existingData, on
   const [selectedType, setSelectedType] = useState<HouseType>(existingData?.type || 'Modern Minimalism');
   const [userName, setUserName] = useState(existingData?.userName || '');
   const [userPhone, setUserPhone] = useState(existingData?.userPhone || '');
+  const [userEmail, setUserEmail] = useState(existingData?.userEmail || '');
   const [isMapMode, setIsMapMode] = useState(existingData?.isMapMode ?? true);
   
   const [customStyleImage, setCustomStyleImage] = useState<string | undefined>(existingData?.customStyleImage);
@@ -72,7 +73,40 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onStart, existingData, on
     }
   };
 
-  const isFormValid = userName.length > 1 && userPhone.length > 7 && (activeTab === 'preset' || (customStyleDesc.length > 5));
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data?.type === 'OAUTH_AUTH_SUCCESS' && event.data?.user) {
+        const user = event.data.user;
+        if (user.name) setUserName(user.name);
+        if (user.email) setUserEmail(user.email);
+      }
+    };
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, []);
+
+  const handleGoogleLogin = async () => {
+    try {
+      const redirectUri = `${window.location.origin}/auth/callback`;
+      const response = await fetch(`/api/auth/url?redirectUri=${encodeURIComponent(redirectUri)}`);
+      if (!response.ok) throw new Error('Failed to get auth URL');
+      const { url } = await response.json();
+      
+      const authWindow = window.open(
+        url,
+        'oauth_popup',
+        'width=600,height=700'
+      );
+
+      if (!authWindow) {
+        alert('Пожалуйста, разрешите всплывающие окна для входа.');
+      }
+    } catch (error) {
+      console.error('OAuth error:', error);
+    }
+  };
+
+  const isFormValid = userName.length > 1 && (userEmail || userPhone.length > 7) && (activeTab === 'preset' || (customStyleDesc.length > 5));
 
   const handleStart = () => {
     if (!isFormValid) {
@@ -104,6 +138,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onStart, existingData, on
     onStart({
       userName,
       userPhone,
+      userEmail,
       isMapMode,
       gateSideIndex: 2,
       ...styleData
@@ -131,7 +166,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onStart, existingData, on
       </nav>
 
       <main className="flex-1 max-w-[1720px] mx-auto w-full px-4 lg:px-12 py-6 grid grid-cols-1 lg:grid-cols-[1fr_2.5fr] gap-8 items-start relative z-10">
-        <div className="space-y-6 flex flex-col items-center lg:items-start text-center lg:text-left sticky top-6">
+        <div className="space-y-6 flex flex-col items-center lg:items-start text-center lg:text-left lg:sticky lg:top-6">
            <div className="space-y-2">
               <h1 className="text-3xl lg:text-5xl font-black text-slate-900 leading-tight tracking-tighter">
                 {t.welcome.split(' ').slice(0,-1).join(' ')} <span className="text-[#ff5f1f]">{t.welcome.split(' ').pop()}</span>
@@ -141,8 +176,29 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onStart, existingData, on
 
            <div className="space-y-3 w-full max-w-[320px]">
               <div className="space-y-2 relative z-20">
+                 {!userEmail && (
+                   <>
+                     <button 
+                       onClick={handleGoogleLogin}
+                       className="w-full bg-white border border-slate-200 rounded-lg px-4 py-2.5 flex items-center justify-center gap-2 hover:bg-slate-50 transition-colors shadow-sm"
+                     >
+                       <img src="https://www.google.com/favicon.ico" alt="Google" className="w-4 h-4" />
+                       <span className="text-[12px] font-bold text-slate-700">Войти через Google</span>
+                     </button>
+                     <div className="flex items-center gap-2 py-1">
+                       <div className="h-px bg-slate-200 flex-1"></div>
+                       <span className="text-[10px] text-slate-400 font-bold uppercase">Или введите данные</span>
+                       <div className="h-px bg-slate-200 flex-1"></div>
+                     </div>
+                   </>
+                 )}
                  <input type="text" value={userName} onChange={e => setUserName(e.target.value)} placeholder={t.namePlaceholder} className="w-full bg-slate-50 border border-slate-100 rounded-lg px-4 py-2.5 text-[16px] focus:border-[#ff5f1f] outline-none font-bold shadow-sm select-text" />
-                 <input type="tel" value={userPhone} onChange={handlePhoneChange} placeholder={t.phonePlaceholder} className="w-full bg-slate-50 border border-slate-100 rounded-lg px-4 py-2.5 text-[16px] focus:border-[#ff5f1f] outline-none font-bold shadow-sm select-text" />
+                 <input type="tel" value={userPhone} onChange={handlePhoneChange} placeholder={userEmail ? "Телефон (необязательно)" : t.phonePlaceholder} className="w-full bg-slate-50 border border-slate-100 rounded-lg px-4 py-2.5 text-[16px] focus:border-[#ff5f1f] outline-none font-bold shadow-sm select-text" />
+                 {userEmail && (
+                   <div className="text-[10px] text-slate-500 font-medium text-center">
+                     Email: {userEmail}
+                   </div>
+                 )}
               </div>
 
               <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 space-y-3">

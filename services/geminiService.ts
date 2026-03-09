@@ -146,8 +146,8 @@ export const generateConstructionEstimate = async (house: HouseState): Promise<s
   // Цены на 2026 год (в тенге)
   const PRICE_HOUSE = 550000;
   const PRICE_BATH = 343750; // Уменьшено в 2 раза
-  const PRICE_GARAGE = 350000;
-  const PRICE_CARPORT = 65000;
+  const PRICE_GARAGE = 280000; // Уменьшено на 20%
+  const PRICE_CARPORT = 78000; // Увеличено на 20%
   const PRICE_TERRACE = 150000;
   const PRICE_FENCE = 50000;
   const PRICE_COMMUNICATIONS = 2500000;

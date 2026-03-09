@@ -118,6 +118,27 @@ async function startServer() {
     res.json({ success: true });
   });
 
+  app.post("/api/notify-manager", async (req, res) => {
+    const { houseData } = req.body;
+    // Используем ID чата из переменных окружения, либо вы можете вписать его сюда напрямую
+    // Чтобы бот мог отправить сообщение на номер +77072207261, 
+    // владелец этого номера должен написать боту /start и узнать свой chat_id
+    const managerChatId = process.env.MANAGER_CHAT_ID || "YOUR_CHAT_ID_HERE";
+    
+    if (bot && managerChatId && managerChatId !== "YOUR_CHAT_ID_HERE") {
+      try {
+        const message = `🚨 НОВЫЙ ЗАКАЗ!\n\nИмя: ${houseData.userName || 'Не указано'}\nТелефон: ${houseData.userPhone || 'Не указан'}\nEmail: ${houseData.userEmail || 'Не указан'}\nПроект: ${houseData.name}`;
+        await bot.sendMessage(managerChatId, message);
+        res.json({ success: true });
+      } catch (e) {
+        console.error("Error sending manager notification:", e);
+        res.status(500).json({ error: "Failed to send notification" });
+      }
+    } else {
+      res.json({ success: false, message: "Bot or MANAGER_CHAT_ID not configured" });
+    }
+  });
+
   app.get("/api/telegram-bot-info", (req, res) => {
     if (botInfo) {
       res.json({ username: botInfo.username });

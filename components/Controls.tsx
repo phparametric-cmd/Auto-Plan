@@ -14,7 +14,7 @@ const WALL_RATIO = 0.15;
 const HALL_RATIO = 0.09; 
 const STAIR_AREA = 7.5;
 
-const ROTATION_STEP = 10 * Math.PI / 180; // 10 degrees in radians
+const ROTATION_STEP = 5 * Math.PI / 180; // 5 degrees in radians
 
 const LOGO_URL = "https://raw.githubusercontent.com/phparametric-cmd/ph/3a1686781dd89eb77cf6f7ca10c15c739ae48eff/Ph.jpeg";
 const MODEL_PHOTO_URL = "https://raw.githubusercontent.com/phparametric-cmd/ph/6daf2fc233f4eefef2e9d9f79e3326aeb1560d39/%D1%84%D0%BE%D1%82%D0%BE%20%D0%BC%D0%B0%D0%BA%D0%B5%D1%82%D0%B0%20.jpg";
@@ -113,22 +113,13 @@ const Controls: React.FC<ControlsProps> = ({
   const [orderSuccess, setOrderSuccess] = useState(false);
   const [revisionCount, setRevisionCount] = useState(0);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(true);
-  const [hasVisitedStep1, setHasVisitedStep1] = useState(false);
-  const hasEnteredStep1 = useRef(false);
   const [orderError, setOrderError] = useState<string | null>(null);
   const sitePlanExportRef = useRef<HTMLDivElement>(null);
 
   const [previewPdfUrl, setPreviewPdfUrl] = useState<string | null>(null);
   const [previewPdfName, setPreviewPdfName] = useState<string>("");
   const [previewPdfBlob, setPreviewPdfBlob] = useState<Blob | null>(null);
-
-  useEffect(() => {
-    if (currentStep === 1) {
-      hasEnteredStep1.current = true;
-    } else if (hasEnteredStep1.current && !hasVisitedStep1) {
-      setHasVisitedStep1(true);
-    }
-  }, [currentStep, hasVisitedStep1]);
+  const [previewPdfZoom, setPreviewPdfZoom] = useState<number>(1);
 
   useEffect(() => {
     setHasUnsavedChanges(true);
@@ -305,18 +296,16 @@ const Controls: React.FC<ControlsProps> = ({
   };
 
   useEffect(() => {
-    const stepsToExpand = [2, 3, 4, 5]; 
+    const stepsToExpand = [1, 2, 3]; 
     if (stepsToExpand.includes(currentStep)) {
       setIsMobileExpanded(true);
     }
   }, [currentStep, setIsMobileExpanded]);
 
   const STEPS = useMemo(() => [
-    { id: 'plot', label: t.plotParams, icon: 'fa-map-marked-alt' },
-    { id: 'house', label: 'ДОМ', icon: 'fa-home' },
+    { id: 'house_and_plot', label: 'ДОМ И УЧАСТОК', icon: 'fa-home' },
     { id: 'planning', label: t.planning, icon: 'fa-th-large' },
     { id: 'landscape', label: t.objects, icon: 'fa-tree' },
-    { id: 'parking', label: t.parking, icon: 'fa-car' },
     { id: 'finish', label: t.finish, icon: 'fa-check-double' },
   ], [t]);
 
@@ -331,7 +320,7 @@ const Controls: React.FC<ControlsProps> = ({
   };
 
   const handleContinue = () => {
-    if (currentStep < 5) setCurrentStep(prev => prev + 1);
+    if (currentStep < 3) setCurrentStep(prev => prev + 1);
   };
 
   const maxFloors = useMemo(() => Math.max(house.floors, ...house.additions.map(a => a.floors), 0), [house.floors, house.additions]);
@@ -518,6 +507,7 @@ const Controls: React.FC<ControlsProps> = ({
       const { blob: passportBlob, imgData } = await generatePDFBlob(el, `Passport_${house.name}`);
       setPreviewPdfBlob(passportBlob);
       setPreviewPdfName(`Passport_${house.name}.pdf`);
+      setPreviewPdfZoom(1);
       setPreviewPdfUrl(imgData);
     } catch (e) { console.error(e); } finally { setIsDownloadingPassport(false); }
   };
@@ -530,6 +520,7 @@ const Controls: React.FC<ControlsProps> = ({
       const { blob: calculationBlob, imgData } = await generatePDFBlob(el, `Calculation_${house.name}`);
       setPreviewPdfBlob(calculationBlob);
       setPreviewPdfName(`Calculation_${house.name}.pdf`);
+      setPreviewPdfZoom(1);
       setPreviewPdfUrl(imgData);
     } catch (e) { console.error(e); } finally { setIsDownloadingCalc(false); }
   };
@@ -552,6 +543,7 @@ const Controls: React.FC<ControlsProps> = ({
       const { blob: estimateBlob, imgData } = await generatePDFBlob(el, `Estimate_${house.name}`);
       setPreviewPdfBlob(estimateBlob);
       setPreviewPdfName(`Estimate_${house.name}.pdf`);
+      setPreviewPdfZoom(1);
       setPreviewPdfUrl(imgData);
     } catch (e) { 
       console.error(e); 
@@ -560,9 +552,9 @@ const Controls: React.FC<ControlsProps> = ({
     }
   };
 
-  const SitePlanSVG = ({ isForExport = false }: { isForExport?: boolean }) => {
+  const SitePlanSVG = ({ isForExport = false, className = "", style = {} }: { isForExport?: boolean, className?: string, style?: React.CSSProperties }) => {
     const scale = isForExport ? 10 : 6; 
-    const padding = 60;
+    const padding = 80;
     
     const corners = house.plotCorners || {
         nw: { x: -house.plotWidth / 2, z: -house.plotLength / 2 },
@@ -611,7 +603,7 @@ const Controls: React.FC<ControlsProps> = ({
     const dist = (p1: Point2D, p2: Point2D) => Math.sqrt(Math.pow(p2.x - p1.x, 2) + Math.pow(p2.z - p1.z, 2));
 
     return (
-      <svg width={svgW} height={svgL} viewBox={`0 0 ${svgW} ${svgL}`} className="bg-white">
+      <svg width={svgW} height={svgL} viewBox={`0 0 ${svgW} ${svgL}`} className={`bg-white ${className}`} style={style}>
         <polygon points={polygonPoints} fill="#f0fdf4" stroke="#166534" strokeWidth="2" strokeDasharray="5,3" />
         <g fontSize={isForExport ? "12" : "9"} fontWeight="900" fill="#166534">
           {(house.plotCorners?.vertices || [corners.nw, corners.ne, corners.se, corners.sw]).map((p, i, arr) => {
@@ -737,7 +729,7 @@ const Controls: React.FC<ControlsProps> = ({
   return (
     <>
       {/* Mobile Warning */}
-      {isMobile && currentStep === 1 && isHouseOutOfBounds && (
+      {isMobile && currentStep === 0 && isHouseOutOfBounds && (
         <div className="fixed top-[60px] left-4 right-4 z-[1000] bg-red-500 text-white p-3 rounded-xl text-[10px] font-bold uppercase flex items-start gap-2 shadow-2xl animate-in fade-in slide-in-from-top-4">
           <i className="fas fa-exclamation-triangle mt-0.5 text-red-200"></i>
           <span className="leading-relaxed">Внимание: Дом не помещается на участок. Уменьшите размеры дома или сместите его, чтобы соблюсти отступы 3 метра от границ участка.</span>
@@ -785,10 +777,10 @@ const Controls: React.FC<ControlsProps> = ({
             )}
           </div>
 
-          {currentStep < 5 && (
+          {currentStep < 3 && (
             <button 
               onClick={handleContinue} 
-              className={`bg-slate-900 text-white px-8 py-3 rounded-2xl shadow-2xl flex items-center gap-3 hover:bg-[#ff5f1f] hover:scale-105 transition-all group ${currentStep === 4 || isNextStepFlashing ? 'animate-pulse-orange ring-4 ring-orange-100' : ''}`}
+              className={`bg-slate-900 text-white px-8 py-3 rounded-2xl shadow-2xl flex items-center gap-3 hover:bg-[#ff5f1f] hover:scale-105 transition-all group ${currentStep === 2 || isNextStepFlashing ? 'animate-pulse-orange ring-4 ring-orange-100' : ''}`}
             >
               <span className="text-[12px] font-black uppercase tracking-widest">{t.continue}</span>
               <div className="w-6 h-6 bg-white/20 rounded-full flex items-center justify-center group-hover:bg-white transition-colors">
@@ -808,7 +800,7 @@ const Controls: React.FC<ControlsProps> = ({
                </div>
                <div className="text-right text-[10px] font-black uppercase text-slate-400">М 1:100</div>
             </div>
-            <SitePlanSVG isForExport={true} />
+            <SitePlanSVG isForExport={true} className="max-w-full h-auto max-h-[800px]" />
             <div className="flex justify-between border-t-2 border-slate-100 pt-4 text-[9px] font-bold text-slate-400 uppercase">
                <span>Заказчик: {house.userName}</span>
                <span>PH HOME Parametric System</span>
@@ -869,7 +861,7 @@ const Controls: React.FC<ControlsProps> = ({
 
                <div className="col-span-7 flex flex-col gap-6">
                   <div className="bg-white rounded-[48px] p-6 flex items-center justify-center overflow-hidden border border-slate-100 shadow-[0_30px_60px_-15px_rgba(0,0,0,0.06)] aspect-square">
-                     <SitePlanSVG />
+                     <SitePlanSVG isForExport={true} className="max-w-full max-h-full" />
                   </div>
                   <p className="text-[7px] font-black text-slate-300 uppercase tracking-[0.4em] text-center">ГЕНЕРАЛЬНЫЙ ПЛАН • МАСШТАБ 1:100</p>
                </div>
@@ -1143,8 +1135,8 @@ const Controls: React.FC<ControlsProps> = ({
             <span className="text-[6px] font-black text-slate-400 uppercase tracking-tighter mb-0.5 leading-none">УЧАСТОК</span>
             <span className="text-[11px] font-black text-[#ff5f1f] leading-none">{plotSotka} <span className="text-[8px] text-slate-900 font-bold">СОТ.</span></span>
           </div>
-          {currentStep < 5 && (
-            <button onClick={handleContinue} className={`pointer-events-auto bg-white/90 backdrop-blur text-slate-900 px-3 py-1.5 rounded-[12px] shadow-xl flex items-center gap-1.5 border border-slate-100 active:scale-95 transition-all ${currentStep === 4 || isNextStepFlashing ? 'animate-pulse-orange ring-2 ring-[#ff5f1f]' : ''}`}>
+          {currentStep < 3 && (
+            <button onClick={handleContinue} className={`pointer-events-auto bg-white/90 backdrop-blur text-slate-900 px-3 py-1.5 rounded-[12px] shadow-xl flex items-center gap-1.5 border border-slate-100 active:scale-95 transition-all ${currentStep === 2 || isNextStepFlashing ? 'animate-pulse-orange ring-2 ring-[#ff5f1f]' : ''}`}>
               <span className="text-[10px] font-black uppercase tracking-tighter">{t.continue}</span>
               <div className="w-4 h-4 bg-[#0f172a] rounded-full flex items-center justify-center">
                 <i className="fas fa-chevron-right text-white text-[8px]"></i>
@@ -1175,7 +1167,7 @@ const Controls: React.FC<ControlsProps> = ({
           </div>
 
           <div className="flex-1 space-y-3 lg:space-y-5 mt-2">
-            <StepGuidance text={currentStep === 1 && !hasVisitedStep1 ? "Двигай дом, найди лучшее расположение." : t.stepInstructions[currentStep]} />
+            <StepGuidance text={t.stepInstructions[currentStep]} />
 
             {currentStep === 0 && (
               <div className="space-y-2 lg:space-y-4 animate-in fade-in duration-500">
@@ -1216,11 +1208,8 @@ const Controls: React.FC<ControlsProps> = ({
                     </button>
                   </div>
                 </div>
-              </div>
-            )}
 
-            {currentStep === 1 && (
-              <div className="space-y-3 lg:space-y-6 animate-in fade-in duration-500">
+              <div className="space-y-3 lg:space-y-6 pt-4 border-t border-slate-100">
                 <div className={`p-3 lg:p-6 rounded-2xl lg:rounded-[32px] grid grid-cols-2 gap-2 lg:gap-4 shadow-xl transition-all duration-500 ${selectedObjectId === 'house' ? 'bg-[#ff5f1f] scale-[1.01] ring-2 ring-orange-200' : 'bg-[#0f172a]'}`}>
                   <div className="col-span-2 flex items-center justify-between mb-0.5 lg:mb-1">
                     <div className="flex items-center gap-1.5 lg:gap-2">
@@ -1232,8 +1221,8 @@ const Controls: React.FC<ControlsProps> = ({
                   <div className="flex flex-col"><span className={`text-[7px] lg:text-[8px] font-black uppercase mb-0.5 ${selectedObjectId === 'house' ? 'text-white/60' : 'text-slate-500'}`}>{t.floorArea}</span><span className="text-white text-lg lg:text-2xl font-black">{Math.round(totalFootprint)} <span className="text-[8px] lg:text-[10px]">M²</span></span></div>
                   
                   <div className="col-span-2 flex items-center gap-1.5">
-                    <button onClick={() => setHouse(p => ({...p, houseRotation: p.houseRotation - ROTATION_STEP}))} className={`flex-1 py-1.5 lg:py-3 rounded-lg lg:rounded-xl font-black uppercase text-[8px] lg:text-[9px] transition-all bg-[#ff5f1f] text-white`}><i className="fas fa-undo mr-1 lg:mr-1.5"></i> -10°</button>
-                    <button onClick={() => setHouse(p => ({...p, houseRotation: p.houseRotation + ROTATION_STEP}))} className={`flex-1 py-1.5 lg:py-3 rounded-lg lg:rounded-xl font-black uppercase text-[8px] lg:text-[9px] transition-all bg-[#ff5f1f] text-white`}><i className="fas fa-redo mr-1 lg:mr-1.5"></i> +10°</button>
+                    <button onClick={() => setHouse(p => ({...p, houseRotation: p.houseRotation - ROTATION_STEP}))} className={`flex-1 py-1.5 lg:py-3 rounded-lg lg:rounded-xl font-black uppercase text-[8px] lg:text-[9px] transition-all bg-[#ff5f1f] text-white`}><i className="fas fa-undo mr-1 lg:mr-1.5"></i> -5°</button>
+                    <button onClick={() => setHouse(p => ({...p, houseRotation: p.houseRotation + ROTATION_STEP}))} className={`flex-1 py-1.5 lg:py-3 rounded-lg lg:rounded-xl font-black uppercase text-[8px] lg:text-[9px] transition-all bg-[#ff5f1f] text-white`}><i className="fas fa-redo mr-1 lg:mr-1.5"></i> +5°</button>
                   </div>
                 </div>
                 <div className="space-y-3 lg:space-y-5">
@@ -1260,17 +1249,18 @@ const Controls: React.FC<ControlsProps> = ({
                          <Slider label={t.length} value={add.length} min={2} max={15} onChange={(v: number) => updateAddition(add.id, { length: v })} />
                          <div className="flex bg-slate-100 p-0.5 rounded-lg lg:rounded-xl gap-0.5">{[1, 2, 3].map(n => (<button key={n} onClick={() => updateAddition(add.id, { floors: n })} className={`flex-1 py-1 lg:py-1.5 rounded-md lg:rounded-lg text-[8px] lg:text-[9px] font-black transition-all ${add.floors === n ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-400'}`}>{n} эт</button>))}</div>
                          <div className="flex gap-1.5">
-                           <button onClick={() => updateAddition(add.id, { rotation: add.rotation - ROTATION_STEP })} className="flex-1 py-1 lg:py-1.5 bg-slate-900 text-white rounded-md lg:rounded-lg text-[8px] lg:text-[9px] font-black"><i className="fas fa-undo mr-1"></i> -10°</button>
-                           <button onClick={() => updateAddition(add.id, { rotation: add.rotation + ROTATION_STEP })} className="flex-1 py-1 lg:py-1.5 bg-slate-900 text-white rounded-md lg:rounded-lg text-[8px] lg:text-[9px] font-black"><i className="fas fa-redo mr-1"></i> +10°</button>
+                           <button onClick={() => updateAddition(add.id, { rotation: add.rotation - ROTATION_STEP })} className="flex-1 py-1 lg:py-1.5 bg-slate-900 text-white rounded-md lg:rounded-lg text-[8px] lg:text-[9px] font-black"><i className="fas fa-undo mr-1"></i> -5°</button>
+                           <button onClick={() => updateAddition(add.id, { rotation: add.rotation + ROTATION_STEP })} className="flex-1 py-1 lg:py-1.5 bg-slate-900 text-white rounded-md lg:rounded-lg text-[8px] lg:text-[9px] font-black"><i className="fas fa-redo mr-1"></i> +5°</button>
                          </div>
                       </div>
                     ))}
                   </div>
                 </div>
               </div>
+              </div>
             )}
 
-            {currentStep === 2 && (
+            {currentStep === 1 && (
               <div className="space-y-2 lg:space-y-4 animate-in fade-in duration-500">
                 <div className="bg-[#0f172a] p-2 lg:p-4 rounded-2xl lg:rounded-[28px] space-y-2 lg:space-y-4">
                   {house.calculatedPlan?.map((floor, fIdx) => {
@@ -1336,53 +1326,48 @@ const Controls: React.FC<ControlsProps> = ({
               </div>
             )}
 
-            {currentStep === 3 && (
+            {currentStep === 2 && (
               <div className="space-y-2 lg:space-y-4 animate-in fade-in duration-500">
                 <ToggleObject isMobileExpanded={isMobileExpanded} isFocused={selectedObjectId === 'pool'} label={t.pool} active={house.hasPool} onToggle={(v: boolean) => setHouse(p => ({...p, hasPool: v, poolWidth: v ? 4 * scaleFactor : p.poolWidth, poolDepth: v ? 8 * scaleFactor : p.poolDepth}))}>
                   <Slider label={t.width} value={house.poolWidth} min={3} max={15} onChange={(v: number) => setHouse(p => ({...p, poolWidth: v}))} />
                   <Slider label={t.depth} value={house.poolDepth} min={2} max={10} onChange={(v: number) => setHouse(p => ({...p, poolDepth: v}))} />
                   <div className="flex gap-2">
-                    <button onClick={() => setHouse(p => ({...p, poolRotation: p.poolRotation - ROTATION_STEP}))} className="flex-1 py-3 bg-slate-100 rounded-xl font-black uppercase text-[10px]"><i className="fas fa-undo mr-2"></i> -10°</button>
-                    <button onClick={() => setHouse(p => ({...p, poolRotation: p.poolRotation + ROTATION_STEP}))} className="flex-1 py-3 bg-slate-100 rounded-xl font-black uppercase text-[10px]"><i className="fas fa-redo mr-2"></i> +10°</button>
+                    <button onClick={() => setHouse(p => ({...p, poolRotation: p.poolRotation - ROTATION_STEP}))} className="flex-1 py-3 bg-slate-100 rounded-xl font-black uppercase text-[10px]"><i className="fas fa-undo mr-2"></i> -5°</button>
+                    <button onClick={() => setHouse(p => ({...p, poolRotation: p.poolRotation + ROTATION_STEP}))} className="flex-1 py-3 bg-slate-100 rounded-xl font-black uppercase text-[10px]"><i className="fas fa-redo mr-2"></i> +5°</button>
                   </div>
                 </ToggleObject>
-                <ToggleObject isMobileExpanded={isMobileExpanded} isFocused={selectedObjectId === 'terrace'} label={t.terrace} active={house.hasTerrace} onToggle={(v: boolean) => setHouse(p => ({...p, hasTerrace: v, terraceWidth: v ? 4 * scaleFactor : p.terraceWidth, terraceDepth: v ? 3 * scaleFactor : p.terraceDepth}))}>
+                <ToggleObject isMobileExpanded={isMobileExpanded} isFocused={selectedObjectId === 'terrace'} label={t.terrace} active={house.hasTerrace} onToggle={(v: boolean) => setHouse(p => ({...p, hasTerrace: v, terraceWidth: v ? 6 * scaleFactor : p.terraceWidth, terraceDepth: v ? 5 * scaleFactor : p.terraceDepth, terracePosZ: v ? (p.houseLength / 2 + (5 * scaleFactor) / 2) : p.terracePosZ}))}>
                   <Slider label={t.width} value={house.terraceWidth} min={3} max={15} onChange={(v: number) => setHouse(p => ({...p, terraceWidth: v}))} />
                   <Slider label={t.depth} value={house.terraceDepth} min={3} max={10} onChange={(v: number) => setHouse(p => ({...p, terraceDepth: v}))} />
                   <div className="flex gap-2">
-                    <button onClick={() => setHouse(p => ({...p, terraceRotation: p.terraceRotation - ROTATION_STEP}))} className="flex-1 py-3 bg-slate-100 rounded-xl font-black uppercase text-[10px]"><i className="fas fa-undo mr-2"></i> -10°</button>
-                    <button onClick={() => setHouse(p => ({...p, terraceRotation: p.terraceRotation + ROTATION_STEP}))} className="flex-1 py-3 bg-slate-100 rounded-xl font-black uppercase text-[10px]"><i className="fas fa-redo mr-2"></i> +10°</button>
+                    <button onClick={() => setHouse(p => ({...p, terraceRotation: p.terraceRotation - ROTATION_STEP}))} className="flex-1 py-3 bg-slate-100 rounded-xl font-black uppercase text-[10px]"><i className="fas fa-undo mr-2"></i> -5°</button>
+                    <button onClick={() => setHouse(p => ({...p, terraceRotation: p.terraceRotation + ROTATION_STEP}))} className="flex-1 py-3 bg-slate-100 rounded-xl font-black uppercase text-[10px]"><i className="fas fa-redo mr-2"></i> +5°</button>
                   </div>
                 </ToggleObject>
                 <ToggleObject isMobileExpanded={isMobileExpanded} isFocused={selectedObjectId === 'bath'} label={t.bath} active={house.hasBath} onToggle={(v: boolean) => setHouse(p => ({...p, hasBath: v, bathWidth: v ? 4 * scaleFactor : p.bathWidth, bathDepth: v ? 6 * scaleFactor : p.bathDepth}))}>
                   <Slider label={t.width} value={house.bathWidth} min={3} max={12} onChange={(v: number) => setHouse(p => ({...p, bathWidth: v}))} />
                   <Slider label={t.depth} value={house.bathDepth} min={3} max={12} onChange={(v: number) => setHouse(p => ({...p, bathDepth: v}))} />
                   <div className="flex gap-2">
-                    <button onClick={() => setHouse(p => ({...p, bathRotation: p.bathRotation - ROTATION_STEP}))} className="flex-1 py-3 bg-slate-100 rounded-xl font-black uppercase text-[10px]"><i className="fas fa-undo mr-2"></i> -10°</button>
-                    <button onClick={() => setHouse(p => ({...p, bathRotation: p.bathRotation + ROTATION_STEP}))} className="flex-1 py-3 bg-slate-100 rounded-xl font-black uppercase text-[10px]"><i className="fas fa-redo mr-2"></i> +10°</button>
+                    <button onClick={() => setHouse(p => ({...p, bathRotation: p.bathRotation - ROTATION_STEP}))} className="flex-1 py-3 bg-slate-100 rounded-xl font-black uppercase text-[10px]"><i className="fas fa-undo mr-2"></i> -5°</button>
+                    <button onClick={() => setHouse(p => ({...p, bathRotation: p.bathRotation + ROTATION_STEP}))} className="flex-1 py-3 bg-slate-100 rounded-xl font-black uppercase text-[10px]"><i className="fas fa-redo mr-2"></i> +5°</button>
                   </div>
                 </ToggleObject>
                 <ToggleObject isMobileExpanded={isMobileExpanded} isFocused={selectedObjectId === 'bbq'} label={t.bbq} active={house.hasBBQ} onToggle={(v: boolean) => setHouse(p => ({...p, hasBBQ: v, bbqWidth: v ? 3 * scaleFactor : p.bbqWidth, bbqDepth: v ? 4 * scaleFactor : p.bbqDepth}))}>
                   <Slider label={t.width} value={house.bbqWidth} min={2} max={8} onChange={(v: number) => setHouse(p => ({...p, bbqWidth: v}))} />
                   <Slider label={t.depth} value={house.bbqDepth} min={2} max={8} onChange={(v: number) => setHouse(p => ({...p, bbqDepth: v}))} />
                   <div className="flex gap-2">
-                    <button onClick={() => setHouse(p => ({...p, bbqRotation: p.bbqRotation - ROTATION_STEP}))} className="flex-1 py-3 bg-slate-100 rounded-xl font-black uppercase text-[10px]"><i className="fas fa-undo mr-2"></i> -10°</button>
-                    <button onClick={() => setHouse(p => ({...p, bbqRotation: p.bbqRotation + ROTATION_STEP}))} className="flex-1 py-3 bg-slate-100 rounded-xl font-black uppercase text-[10px]"><i className="fas fa-redo mr-2"></i> +10°</button>
+                    <button onClick={() => setHouse(p => ({...p, bbqRotation: p.bbqRotation - ROTATION_STEP}))} className="flex-1 py-3 bg-slate-100 rounded-xl font-black uppercase text-[10px]"><i className="fas fa-undo mr-2"></i> -5°</button>
+                    <button onClick={() => setHouse(p => ({...p, bbqRotation: p.bbqRotation + ROTATION_STEP}))} className="flex-1 py-3 bg-slate-100 rounded-xl font-black uppercase text-[10px]"><i className="fas fa-redo mr-2"></i> +5°</button>
                   </div>
                 </ToggleObject>
                 <ToggleObject isMobileExpanded={isMobileExpanded} isFocused={selectedObjectId === 'customObj'} label={t.hozblock} active={house.hasCustomObj} onToggle={(v: boolean) => setHouse(p => ({...p, hasCustomObj: v, customObjWidth: v ? 3 * scaleFactor : p.customObjWidth, customObjDepth: v ? 4 * scaleFactor : p.customObjDepth}))}>
                   <Slider label={t.width} value={house.customObjWidth} min={2} max={10} onChange={(v: number) => setHouse(p => ({...p, customObjWidth: v}))} />
                   <Slider label={t.depth} value={house.customObjDepth} min={2} max={10} onChange={(v: number) => setHouse(p => ({...p, customObjDepth: v}))} />
                   <div className="flex gap-2">
-                    <button onClick={() => setHouse(p => ({...p, customObjRotation: p.customObjRotation - ROTATION_STEP}))} className="flex-1 py-3 bg-slate-100 rounded-xl font-black uppercase text-[10px]"><i className="fas fa-undo mr-2"></i> -10°</button>
-                    <button onClick={() => setHouse(p => ({...p, customObjRotation: p.customObjRotation + ROTATION_STEP}))} className="flex-1 py-3 bg-slate-100 rounded-xl font-black uppercase text-[10px]"><i className="fas fa-redo mr-2"></i> +10°</button>
+                    <button onClick={() => setHouse(p => ({...p, customObjRotation: p.customObjRotation - ROTATION_STEP}))} className="flex-1 py-3 bg-slate-100 rounded-xl font-black uppercase text-[10px]"><i className="fas fa-undo mr-2"></i> -5°</button>
+                    <button onClick={() => setHouse(p => ({...p, customObjRotation: p.customObjRotation + ROTATION_STEP}))} className="flex-1 py-3 bg-slate-100 rounded-xl font-black uppercase text-[10px]"><i className="fas fa-redo mr-2"></i> +5°</button>
                   </div>
                 </ToggleObject>
-              </div>
-            )}
-
-            {currentStep === 4 && (
-              <div className="space-y-3 lg:space-y-4 animate-in fade-in duration-500">
                 <ToggleObject isMobileExpanded={isMobileExpanded} isFocused={selectedObjectId === 'garage'} label={t.garage} active={house.hasGarage} onToggle={(v: boolean) => setHouse(p => ({...p, hasGarage: v}))}>
                   <div className="flex gap-1.5 lg:gap-2 mb-2 lg:mb-4">
                     {[1, 2, 3].map(n => (
@@ -1402,8 +1387,8 @@ const Controls: React.FC<ControlsProps> = ({
                   </div>
                   {/* Stepped rotation */}
                   <div className="flex gap-2">
-                    <button onClick={() => setHouse(p => ({...p, garageRotation: p.garageRotation - ROTATION_STEP}))} className="flex-1 py-2 lg:py-3 bg-slate-100 rounded-lg lg:rounded-xl font-black uppercase text-[9px] lg:text-[10px]"><i className="fas fa-undo mr-1 lg:mr-2"></i> -10°</button>
-                    <button onClick={() => setHouse(p => ({...p, garageRotation: p.garageRotation + ROTATION_STEP}))} className="flex-1 py-2 lg:py-3 bg-slate-100 rounded-lg lg:rounded-xl font-black uppercase text-[9px] lg:text-[10px]"><i className="fas fa-redo mr-1 lg:mr-2"></i> +10°</button>
+                    <button onClick={() => setHouse(p => ({...p, garageRotation: p.garageRotation - ROTATION_STEP}))} className="flex-1 py-2 lg:py-3 bg-slate-100 rounded-lg lg:rounded-xl font-black uppercase text-[9px] lg:text-[10px]"><i className="fas fa-undo mr-1 lg:mr-2"></i> -5°</button>
+                    <button onClick={() => setHouse(p => ({...p, garageRotation: p.garageRotation + ROTATION_STEP}))} className="flex-1 py-2 lg:py-3 bg-slate-100 rounded-lg lg:rounded-xl font-black uppercase text-[9px] lg:text-[10px]"><i className="fas fa-redo mr-1 lg:mr-2"></i> +5°</button>
                   </div>
                 </ToggleObject>
                 <ToggleObject isMobileExpanded={isMobileExpanded} isFocused={selectedObjectId === 'carport'} label={t.carport} active={house.hasCarport} onToggle={(v: boolean) => setHouse(p => ({...p, hasCarport: v}))}>
@@ -1425,14 +1410,14 @@ const Controls: React.FC<ControlsProps> = ({
                   </div>
                   {/* Stepped rotation */}
                   <div className="flex gap-2">
-                    <button onClick={() => setHouse(p => ({...p, carportRotation: p.carportRotation - ROTATION_STEP}))} className="flex-1 py-2 lg:py-3 bg-slate-100 rounded-lg lg:rounded-xl font-black uppercase text-[9px] lg:text-[10px]"><i className="fas fa-undo mr-1 lg:mr-2"></i> -10°</button>
-                    <button onClick={() => setHouse(p => ({...p, carportRotation: p.carportRotation + ROTATION_STEP}))} className="flex-1 py-2 lg:py-3 bg-slate-100 rounded-lg lg:rounded-xl font-black uppercase text-[9px] lg:text-[10px]"><i className="fas fa-redo mr-1 lg:mr-2"></i> +10°</button>
+                    <button onClick={() => setHouse(p => ({...p, carportRotation: p.carportRotation - ROTATION_STEP}))} className="flex-1 py-2 lg:py-3 bg-slate-100 rounded-lg lg:rounded-xl font-black uppercase text-[9px] lg:text-[10px]"><i className="fas fa-undo mr-1 lg:mr-2"></i> -5°</button>
+                    <button onClick={() => setHouse(p => ({...p, carportRotation: p.carportRotation + ROTATION_STEP}))} className="flex-1 py-2 lg:py-3 bg-slate-100 rounded-lg lg:rounded-xl font-black uppercase text-[9px] lg:text-[10px]"><i className="fas fa-redo mr-1 lg:mr-2"></i> +5°</button>
                   </div>
                 </ToggleObject>
               </div>
             )}
 
-            {currentStep === 5 && (
+            {currentStep === 3 && (
               <div className="space-y-4 lg:space-y-6 animate-in fade-in duration-500 pb-6 lg:pb-10">
                 <div className="bg-white rounded-[24px] lg:rounded-[32px] p-4 lg:p-6 border shadow-lg space-y-3 lg:space-y-4">
                   <h4 className="text-[9px] lg:text-[11px] font-black uppercase text-slate-400 tracking-widest">ФАЙЛЫ И ПОЖЕЛАНИЯ</h4>
@@ -1547,7 +1532,7 @@ const Controls: React.FC<ControlsProps> = ({
                     </button>
                     <button 
                       onClick={() => { handleSendToTelegram(); if(house.userEmail) handleOrderSilent(); }}
-                      disabled={isSendingTelegram || !house.userPhone}
+                      disabled={isSendingTelegram || !house.userPhone || !house.userEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(house.userEmail)}
                       className="w-full py-3 lg:py-4 bg-[#0088cc] text-white rounded-xl lg:rounded-2xl font-black uppercase text-[10px] lg:text-[11px] flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#0077b3] transition-all"
                     >
                       <i className={`fab ${isSendingTelegram ? 'fa-spinner fa-spin' : 'fa-telegram-plane'} text-[12px] lg:text-base`}></i>Получить в Telegram
@@ -1562,13 +1547,13 @@ const Controls: React.FC<ControlsProps> = ({
           </div>
           
           <div className="flex flex-row gap-3 shrink-0 pt-4 border-t border-slate-100">
-             {currentStep < 5 && (
+             {currentStep < 3 && (
                <>
-                 <button onClick={handleContinue} className={`hidden lg:flex flex-[2] py-6 bg-[#0f172a] text-white rounded-[32px] text-[12px] font-black uppercase items-center justify-center gap-3 active:scale-95 shadow-xl transition-all ${currentStep === 4 || isNextStepFlashing ? 'animate-pulse-orange ring-4 ring-[#ff5f1f]' : ''}`}>ДАЛЕЕ <i className="fas fa-chevron-right text-[10px]"></i></button>
+                 <button onClick={handleContinue} className={`hidden lg:flex flex-[2] py-6 bg-[#0f172a] text-white rounded-[32px] text-[12px] font-black uppercase items-center justify-center gap-3 active:scale-95 shadow-xl transition-all ${currentStep === 2 || isNextStepFlashing ? 'animate-pulse-orange ring-4 ring-[#ff5f1f]' : ''}`}>ДАЛЕЕ <i className="fas fa-chevron-right text-[10px]"></i></button>
                  <button onClick={() => setIsMobileExpanded(false)} className={`lg:hidden flex-[2] py-6 bg-[#0f172a] text-white rounded-[32px] text-[12px] font-black uppercase items-center justify-center active:scale-95 shadow-xl transition-all ${isNextStepFlashing ? 'animate-pulse-orange ring-2 ring-[#ff5f1f]' : ''}`}>ПРИМЕНИТЬ</button>
                </>
              )}
-             {currentStep === 5 && <button onClick={() => setIsMobileExpanded(false)} className="flex-1 py-6 bg-[#ff5f1f] text-white rounded-[32px] text-[12px] font-black uppercase flex items-center justify-center active:scale-95 shadow-xl">ВЕРНУТЬСЯ В 3D</button>}
+             {currentStep === 3 && <button onClick={() => setIsMobileExpanded(false)} className="flex-1 py-6 bg-[#ff5f1f] text-white rounded-[32px] text-[12px] font-black uppercase flex items-center justify-center active:scale-95 shadow-xl">ВЕРНУТЬСЯ В 3D</button>}
           </div>
         </div>
       </div>
@@ -1583,20 +1568,36 @@ const Controls: React.FC<ControlsProps> = ({
         <div className="fixed inset-0 z-[10000] flex flex-col bg-slate-100 overflow-hidden">
           <div className="flex items-center justify-between p-4 border-b bg-white shadow-sm shrink-0">
             <h3 className="font-bold text-lg text-slate-800">{previewPdfName}</h3>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 lg:gap-3">
+              <div className="flex items-center bg-slate-100 rounded-xl p-1 mr-2">
+                <button 
+                  onClick={() => setPreviewPdfZoom(z => Math.max(0.5, z - 0.25))}
+                  className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white hover:shadow-sm text-slate-600 transition-all"
+                >
+                  <i className="fas fa-search-minus"></i>
+                </button>
+                <span className="text-xs font-bold text-slate-600 w-12 text-center">{Math.round(previewPdfZoom * 100)}%</span>
+                <button 
+                  onClick={() => setPreviewPdfZoom(z => Math.min(3, z + 0.25))}
+                  className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white hover:shadow-sm text-slate-600 transition-all"
+                >
+                  <i className="fas fa-search-plus"></i>
+                </button>
+              </div>
               <button 
                 onClick={() => {
                   if (previewPdfBlob) saveAs(previewPdfBlob, previewPdfName);
                 }}
-                className="px-6 py-2.5 bg-[#ff5f1f] text-white rounded-xl font-black uppercase text-[12px] hover:bg-[#e04d14] flex items-center gap-2 transition-colors shadow-lg"
+                className="px-4 lg:px-6 py-2.5 bg-[#ff5f1f] text-white rounded-xl font-black uppercase text-[10px] lg:text-[12px] hover:bg-[#e04d14] flex items-center gap-2 transition-colors shadow-lg"
               >
-                <i className="fas fa-download"></i> Скачать PDF
+                <i className="fas fa-download"></i> <span className="hidden lg:inline">Скачать PDF</span>
               </button>
               <button 
                 onClick={() => {
                   setPreviewPdfUrl(null);
                   setPreviewPdfBlob(null);
                   setPreviewPdfName("");
+                  setPreviewPdfZoom(1);
                 }}
                 className="w-10 h-10 flex items-center justify-center rounded-full bg-slate-200 hover:bg-slate-300 text-slate-600 transition-colors"
               >
@@ -1604,8 +1605,28 @@ const Controls: React.FC<ControlsProps> = ({
               </button>
             </div>
           </div>
-          <div className="flex-1 overflow-auto flex justify-center p-4 lg:p-8">
-            <img src={previewPdfUrl} className="max-w-full h-auto object-contain shadow-2xl bg-white" alt="PDF Preview" />
+          <div 
+            className="flex-1 overflow-auto p-4 lg:p-8 relative"
+            onWheel={(e) => {
+              if (!isMobile) {
+                e.preventDefault();
+                const zoomChange = e.deltaY > 0 ? -0.1 : 0.1;
+                setPreviewPdfZoom(z => Math.max(0.5, Math.min(3, z + zoomChange)));
+              }
+            }}
+          >
+            <div className="min-h-full flex items-center justify-center">
+              <img 
+                src={previewPdfUrl} 
+                className="shadow-2xl bg-white transition-transform duration-200 origin-center" 
+                style={{ 
+                  transform: `scale(${previewPdfZoom})`,
+                  maxWidth: previewPdfZoom <= 1 ? '100%' : 'none',
+                  height: 'auto'
+                }} 
+                alt="PDF Preview" 
+              />
+            </div>
           </div>
         </div>
       )}

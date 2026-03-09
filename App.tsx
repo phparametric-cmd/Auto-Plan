@@ -84,8 +84,8 @@ const INITIAL_STATE: HouseState = {
   planningWishes: "",
   additions: [],
   hasTerrace: false,
-  terraceWidth: 5,
-  terraceDepth: 4,
+  terraceWidth: 6,
+  terraceDepth: 5,
   terracePosX: 0,
   terracePosZ: -8,
   terraceRotation: 0,
@@ -139,7 +139,6 @@ const App: React.FC = () => {
   const [showMapBuilder, setShowMapBuilder] = useState(false);
   const [isMobileExpanded, setIsMobileExpanded] = useState(false);
   const [isNextStepFlashing, setIsNextStepFlashing] = useState(false);
-  const [houseUnlocked, setHouseUnlocked] = useState(false);
   const [customAssistantMsg, setCustomAssistantMsg] = useState<{ title: string, text: string } | undefined>(undefined);
   const [selectedObjectId, setSelectedObjectId] = useState<string | null>(null);
   const [isIdle, setIsIdle] = useState(false);
@@ -169,12 +168,6 @@ const App: React.FC = () => {
       if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
     };
   }, []);
-  
-  useEffect(() => {
-    if (currentStep === 1 && !houseUnlocked) {
-      setHouseUnlocked(true);
-    }
-  }, [currentStep, houseUnlocked]);
 
   const handleStart = (config: Partial<HouseState>) => {
     setHouse(prev => {
@@ -266,7 +259,7 @@ const App: React.FC = () => {
           <Scene 
             house={house} 
             setHouse={setHouse} 
-            showHouse={houseUnlocked} 
+            showHouse={true} 
             isStyleStep={true} 
             currentStep={currentStep} 
             setCurrentStep={setCurrentStep}

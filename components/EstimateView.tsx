@@ -57,10 +57,6 @@ const EstimateView: React.FC<EstimateViewProps> = ({ house, estimateHtml }) => {
                 <span className="text-slate-400">Площадь участка</span>
                 <span className="text-slate-900 font-bold">{(house.plotWidth * house.plotLength / 100).toFixed(1)} сот.</span>
               </div>
-              <div className="flex justify-between border-b border-slate-50 py-3 text-[13px] font-bold text-[#ff5f1f]">
-                <span>Уровень отделки</span>
-                <span>Черновая + Фасад 100%</span>
-              </div>
             </div>
           </div>
         </div>

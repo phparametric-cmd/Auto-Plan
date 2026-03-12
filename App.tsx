@@ -226,14 +226,6 @@ const App: React.FC = () => {
       return applyZoneRules(next);
     });
     setShowMapBuilder(false);
-    
-    const t = getTranslation(house.lang);
-    setCustomAssistantMsg({
-      title: t.sema,
-      text: t.guidance[0]
-    });
-    // Clear the custom message after some time so it doesn't stay forever
-    setTimeout(() => setCustomAssistantMsg(undefined), 8000);
   };
 
   const changeLang = (lang: Language) => {

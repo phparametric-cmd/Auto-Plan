@@ -10,6 +10,7 @@ interface HouseProps {
   isAddition?: boolean;
   selected?: boolean;
   onDragStart?: (e: any) => void;
+  isTransparent?: boolean;
 }
 
 const WindowFrame = ({ width, height, type }: { width: number, height: number, type: HouseType }) => {
@@ -54,11 +55,12 @@ const WindowFrame = ({ width, height, type }: { width: number, height: number, t
   );
 };
 
-const House: React.FC<HouseProps> = ({ state, isAddition = false, selected = false, onDragStart }) => {
+const House: React.FC<HouseProps> = ({ state, isAddition = false, selected = false, onDragStart, isTransparent = false }) => {
   const hW = state.houseWidth;
   const hL = state.houseLength;
   const floorHeight = 3.2;
   const totalHeight = state.floors * floorHeight;
+  const opacity = isTransparent ? 0.3 : 1;
 
   return (
     <group>
@@ -75,7 +77,7 @@ const House: React.FC<HouseProps> = ({ state, isAddition = false, selected = fal
         }}
       >
         <boxGeometry args={[hW + 0.2, 0.3, hL + 0.2]} />
-        <meshStandardMaterial color="#cbd5e1" roughness={0.9} />
+        <meshStandardMaterial color="#cbd5e1" roughness={0.9} transparent={true} opacity={opacity} />
       </mesh>
 
       {/* Floors iteration */}
@@ -92,7 +94,7 @@ const House: React.FC<HouseProps> = ({ state, isAddition = false, selected = fal
             }}
           >
             <boxGeometry args={[hW, floorHeight, hL]} />
-            <meshStandardMaterial color={state.wallColor} roughness={0.6} />
+            <meshStandardMaterial color={state.wallColor} roughness={0.6} transparent={true} opacity={opacity} />
           </mesh>
           <mesh 
             position={[0, floorHeight/2, 0]}
@@ -104,7 +106,7 @@ const House: React.FC<HouseProps> = ({ state, isAddition = false, selected = fal
             }}
           >
             <boxGeometry args={[hW + 0.1, 0.1, hL + 0.1]} />
-            <meshStandardMaterial color="#94a3b8" />
+            <meshStandardMaterial color="#94a3b8" transparent={true} opacity={opacity} />
           </mesh>
           
           {/* Windows - Only for main house component */}
@@ -129,7 +131,7 @@ const House: React.FC<HouseProps> = ({ state, isAddition = false, selected = fal
           }}
         >
           <boxGeometry args={[hW + 0.6, 0.3, hL + 0.6]} />
-          <meshStandardMaterial color={state.roofColor} />
+          <meshStandardMaterial color={state.roofColor} transparent={true} opacity={opacity} />
         </mesh>
       </group>
 
@@ -146,12 +148,63 @@ const House: React.FC<HouseProps> = ({ state, isAddition = false, selected = fal
         >
           <mesh castShadow>
             <boxGeometry args={[1.4, 2.2, 0.1]} />
-            <meshStandardMaterial color={state.doorColor} metalness={0.5} roughness={0.3} />
+            <meshStandardMaterial color={state.doorColor} metalness={0.5} roughness={0.3} transparent={true} opacity={opacity} />
           </mesh>
           <mesh position={[0, 1.2, 0.4]}>
             <boxGeometry args={[2, 0.1, 1]} />
-            <meshStandardMaterial color={state.roofColor} />
+            <meshStandardMaterial color={state.roofColor} transparent={true} opacity={opacity} />
           </mesh>
+        </group>
+      )}
+
+      {/* Floor plan lines (visible when transparent) */}
+      {isTransparent && (
+        <group>
+          {Array.from({ length: state.floors }).map((_, fIdx) => {
+            const floorPlan = state.calculatedPlan?.[fIdx];
+            const roomsCount = isAddition ? 1 : (floorPlan ? floorPlan.rooms.length : 4);
+            const baseY = fIdx * floorHeight + 0.35;
+            
+            const cols = Math.ceil(Math.sqrt(roomsCount));
+            const rows = Math.ceil(roomsCount / cols);
+            
+            const walls = [];
+            
+            // Vertical walls (along Z axis)
+            for (let i = 1; i < cols; i++) {
+              const x = -hW/2 + (hW / cols) * i;
+              walls.push(
+                <mesh key={`v-${i}`} position={[x, 1, 0]}>
+                  <boxGeometry args={[0.2, 2, hL - 0.2]} />
+                  <meshStandardMaterial color="#94a3b8" />
+                </mesh>
+              );
+            }
+            
+            // Horizontal walls (along X axis)
+            for (let i = 1; i < rows; i++) {
+              const z = -hL/2 + (hL / rows) * i;
+              walls.push(
+                <mesh key={`h-${i}`} position={[0, 1, z]}>
+                  <boxGeometry args={[hW - 0.2, 2, 0.2]} />
+                  <meshStandardMaterial color="#94a3b8" />
+                </mesh>
+              );
+            }
+
+            return (
+              <group key={`layout-${fIdx}`} position={[0, baseY, 0]}>
+                {/* Floor slab */}
+                <mesh position={[0, 0, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+                  <planeGeometry args={[hW - 0.2, hL - 0.2]} />
+                  <meshStandardMaterial color="#e2e8f0" />
+                </mesh>
+                
+                {/* Inner walls representation */}
+                {walls}
+              </group>
+            );
+          })}
         </group>
       )}
     </group>

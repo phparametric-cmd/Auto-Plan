@@ -26,6 +26,8 @@ const CONTACT_INFO = {
 const getGarageWidth = (cars: number, isSmall: boolean = false) => (cars === 1 ? 4.5 : (cars === 2 ? 7.5 : 10.5)) * (isSmall ? 0.5 : 1);
 const getCarportWidth = (cars: number, isSmall: boolean = false) => (cars === 1 ? 4 : (cars === 2 ? 7 : 10)) * (isSmall ? 0.5 : 1);
 
+import { getGatePositionAndRotation, getSmartPosition } from '../services/placement';
+
 const Slider = ({ label, value, min, max, onChange, unit = "м", step = 0.1, isHighlighted = false }: any) => (
   <div className={`space-y-1 lg:space-y-2 p-0.5 lg:p-1 rounded-lg transition-all ${isHighlighted ? 'bg-orange-50/50' : ''}`}>
     <div className="flex justify-between items-end">
@@ -120,6 +122,10 @@ const Controls: React.FC<ControlsProps> = ({
   const [previewPdfName, setPreviewPdfName] = useState<string>("");
   const [previewPdfBlob, setPreviewPdfBlob] = useState<Blob | null>(null);
   const [previewPdfZoom, setPreviewPdfZoom] = useState<number>(1);
+  const pdfContainerRef = useRef<HTMLDivElement>(null);
+  const [isPdfDragging, setIsPdfDragging] = useState(false);
+  const [pdfDragStart, setPdfDragStart] = useState({ x: 0, y: 0 });
+  const [pdfScrollStart, setPdfScrollStart] = useState({ left: 0, top: 0 });
 
   useEffect(() => {
     setHasUnsavedChanges(true);
@@ -1050,7 +1056,7 @@ const Controls: React.FC<ControlsProps> = ({
                   </div>
                </div>
                <div className="flex flex-col items-end gap-3 text-right">
-                  <h1 className="text-3xl font-light uppercase tracking-[0.3em] leading-tight text-slate-900">Расчёт стоимости<br/><span className="font-black">Проектирования</span></h1>
+                  <h1 className="text-3xl font-light uppercase tracking-[0.3em] leading-tight text-slate-900">Расчёт стоимости<br/><span className="font-black">Концепт Проекта</span></h1>
                   <p className="text-[8px] font-black text-slate-300 uppercase tracking-[0.4em]">ПРОЕКТ № {house.name}</p>
                </div>
             </div>
@@ -1110,7 +1116,7 @@ const Controls: React.FC<ControlsProps> = ({
                            </td>
                         </tr>
                         <tr className="bg-slate-50/50">
-                           <td colSpan={2} className="py-5 pl-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Итого стоимость проекта</td>
+                           <td colSpan={2} className="py-5 pl-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Итого стоимость концепт проекта</td>
                            <td className="py-5 pr-4 text-right text-[16px] font-black text-[#ff5f1f]">
                               {(() => {
                                  const houseArea = Math.round(totalArea);
@@ -1132,7 +1138,7 @@ const Controls: React.FC<ControlsProps> = ({
 
                <div className="grid grid-cols-2 gap-12">
                   <div className="space-y-6">
-                     <h3 className="text-[8px] font-black uppercase text-slate-300 tracking-[0.2em]">Состав проекта</h3>
+                     <h3 className="text-[8px] font-black uppercase text-slate-300 tracking-[0.2em]">Состав концепт проекта</h3>
                      <div className="space-y-4">
                         <p className="text-[11px] font-black text-slate-900 leading-tight uppercase tracking-wider">{t.conceptModel}</p>
                         <div className="bg-orange-50 p-4 rounded-xl border border-orange-100">
@@ -1172,6 +1178,10 @@ const Controls: React.FC<ControlsProps> = ({
           <span className="text-[10px] font-black uppercase tracking-tighter">{currentStep === 0 ? 'ВЫХОД' : 'НАЗАД'}</span>
         </button>
         <div className="flex items-start gap-1.5 pointer-events-none">
+          <div className="bg-white/90 backdrop-blur px-2 py-1 rounded-[12px] shadow-xl border border-slate-100 flex flex-col items-center">
+            <span className="text-[6px] font-black text-slate-400 uppercase tracking-tighter mb-0.5 leading-none">ДОМ</span>
+            <span className="text-[11px] font-black text-[#ff5f1f] leading-none">{Math.round(house.houseWidth * house.houseLength * house.floors)} <span className="text-[8px] text-slate-900 font-bold">М²</span></span>
+          </div>
           <div className="bg-white/90 backdrop-blur px-2 py-1 rounded-[12px] shadow-xl border border-slate-100 flex flex-col items-center">
             <span className="text-[6px] font-black text-slate-400 uppercase tracking-tighter mb-0.5 leading-none">УЧАСТОК</span>
             <span className="text-[11px] font-black text-[#ff5f1f] leading-none">{plotSotka} <span className="text-[8px] text-slate-900 font-bold">СОТ.</span></span>
@@ -1231,7 +1241,25 @@ const Controls: React.FC<ControlsProps> = ({
                       onClick={() => setHouse(p => {
                         const vertices = p.plotCorners?.vertices || [];
                         const count = vertices.length || 4;
-                        return { ...p, gateSideIndex: (p.gateSideIndex - 1 + count) % count };
+                        const newGateSideIndex = (p.gateSideIndex - 1 + count) % count;
+                        const newState = { ...p, gateSideIndex: newGateSideIndex };
+                        if (p.hasGarage) {
+                          const gW = getGarageWidth(p.garageCars, isSmallPlot);
+                          const gD = isSmallPlot ? 3.25 : 6.5;
+                          const { x, z, rotation } = getGatePositionAndRotation(newState, gW, gD);
+                          newState.garagePosX = x;
+                          newState.garagePosZ = z;
+                          newState.garageRotation = rotation;
+                        }
+                        if (p.hasCarport) {
+                          const cW = getCarportWidth(p.carportCars, isSmallPlot);
+                          const cD = isSmallPlot ? 3.0 : 6.0;
+                          const { x, z, rotation } = getGatePositionAndRotation(newState, cW, cD);
+                          newState.carportPosX = x;
+                          newState.carportPosZ = z;
+                          newState.carportRotation = rotation;
+                        }
+                        return newState;
                       })}
                       className="py-4 lg:py-5 bg-slate-900 text-white rounded-2xl font-black uppercase text-[11px] flex items-center justify-center gap-2 active:scale-95 transition-all shadow-lg"
                     >
@@ -1241,13 +1269,59 @@ const Controls: React.FC<ControlsProps> = ({
                       onClick={() => setHouse(p => {
                         const vertices = p.plotCorners?.vertices || [];
                         const count = vertices.length || 4;
-                        return { ...p, gateSideIndex: (p.gateSideIndex + 1) % count };
+                        const newGateSideIndex = (p.gateSideIndex + 1) % count;
+                        const newState = { ...p, gateSideIndex: newGateSideIndex };
+                        if (p.hasGarage) {
+                          const gW = getGarageWidth(p.garageCars, isSmallPlot);
+                          const gD = isSmallPlot ? 3.25 : 6.5;
+                          const { x, z, rotation } = getGatePositionAndRotation(newState, gW, gD);
+                          newState.garagePosX = x;
+                          newState.garagePosZ = z;
+                          newState.garageRotation = rotation;
+                        }
+                        if (p.hasCarport) {
+                          const cW = getCarportWidth(p.carportCars, isSmallPlot);
+                          const cD = isSmallPlot ? 3.0 : 6.0;
+                          const { x, z, rotation } = getGatePositionAndRotation(newState, cW, cD);
+                          newState.carportPosX = x;
+                          newState.carportPosZ = z;
+                          newState.carportRotation = rotation;
+                        }
+                        return newState;
                       })}
                       className="py-4 lg:py-5 bg-slate-900 text-white rounded-2xl font-black uppercase text-[11px] flex items-center justify-center gap-2 active:scale-95 transition-all shadow-lg"
                     >
                       <i className="fas fa-chevron-right"></i>
                     </button>
                   </div>
+                </div>
+
+                <div className="bg-white rounded-2xl lg:rounded-[28px] p-3 lg:p-5 border shadow-md space-y-2 lg:space-y-3">
+                  <h4 className="text-[8px] lg:text-[10px] font-black uppercase text-slate-400 tracking-widest">Учет инсоляции</h4>
+                  <button 
+                    onClick={() => setHouse(p => ({ ...p, showShadows: !p.showShadows, sunTime: p.sunTime || 12 }))}
+                    className={`w-full py-4 lg:py-5 rounded-2xl font-black uppercase text-[11px] flex items-center justify-center gap-2 active:scale-95 transition-all shadow-lg ${house.showShadows ? 'bg-[#ff5f1f] text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+                  >
+                    <i className="fas fa-sun"></i>
+                    {house.showShadows ? 'Скрыть тени' : 'Показать тени'}
+                  </button>
+                  {house.showShadows && (
+                    <div className="pt-2 animate-in fade-in slide-in-from-top-2">
+                      <Slider 
+                        label="Время суток" 
+                        value={house.sunTime || 12} 
+                        min={6} 
+                        max={20} 
+                        step={1} 
+                        onChange={(v: number) => setHouse(p => ({ ...p, sunTime: v }))} 
+                      />
+                      <div className="flex justify-between text-[8px] lg:text-[10px] text-slate-400 font-bold mt-1">
+                        <span>06:00</span>
+                        <span>13:00</span>
+                        <span>20:00</span>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
               <div className="space-y-3 lg:space-y-6 pt-4 border-t border-slate-100">
@@ -1369,7 +1443,13 @@ const Controls: React.FC<ControlsProps> = ({
 
             {currentStep === 2 && (
               <div className="space-y-2 lg:space-y-4 animate-in fade-in duration-500">
-                <ToggleObject isMobileExpanded={isMobileExpanded} isFocused={selectedObjectId === 'pool'} label={t.pool} active={house.hasPool} onToggle={(v: boolean) => setHouse(p => ({...p, hasPool: v, poolWidth: v ? 4 * scaleFactor : p.poolWidth, poolDepth: v ? 8 * scaleFactor : p.poolDepth}))}>
+                <ToggleObject isMobileExpanded={isMobileExpanded} isFocused={selectedObjectId === 'pool'} label={t.pool} active={house.hasPool} onToggle={(v: boolean) => setHouse(p => {
+                  if (!v) return { ...p, hasPool: false };
+                  const pW = 4 * scaleFactor;
+                  const pD = 8 * scaleFactor;
+                  const { x, z, rotation } = getSmartPosition(p, 'pool', pW, pD);
+                  return { ...p, hasPool: true, poolWidth: pW, poolDepth: pD, poolPosX: x, poolPosZ: z, poolRotation: rotation };
+                })}>
                   <Slider label={t.width} value={house.poolWidth} min={3} max={15} onChange={(v: number) => setHouse(p => ({...p, poolWidth: v}))} />
                   <Slider label={t.depth} value={house.poolDepth} min={2} max={10} onChange={(v: number) => setHouse(p => ({...p, poolDepth: v}))} />
                   <div className="flex gap-2">
@@ -1377,7 +1457,16 @@ const Controls: React.FC<ControlsProps> = ({
                     <button onClick={() => setHouse(p => ({...p, poolRotation: p.poolRotation + ROTATION_STEP}))} className="flex-1 py-3 bg-slate-100 rounded-xl font-black uppercase text-[10px]"><i className="fas fa-redo mr-2"></i> +5°</button>
                   </div>
                 </ToggleObject>
-                <ToggleObject isMobileExpanded={isMobileExpanded} isFocused={selectedObjectId === 'terrace'} label={t.terrace} active={house.hasTerrace} onToggle={(v: boolean) => setHouse(p => ({...p, hasTerrace: v, terraceWidth: v ? 6 * scaleFactor : p.terraceWidth, terraceDepth: v ? 5 * scaleFactor : p.terraceDepth, terracePosZ: v ? (p.houseLength / 2 + (5 * scaleFactor) / 2) : p.terracePosZ}))}>
+                <ToggleObject isMobileExpanded={isMobileExpanded} isFocused={selectedObjectId === 'terrace'} label={t.terrace} active={house.hasTerrace} onToggle={(v: boolean) => setHouse(p => {
+                  if (!v) return { ...p, hasTerrace: false };
+                  const tW = 6 * scaleFactor;
+                  const tD = 5 * scaleFactor;
+                  const houseRot = p.houseRotation || 0;
+                  const offset = p.houseLength / 2 + tD / 2;
+                  const x = p.housePosX + Math.sin(houseRot) * offset;
+                  const z = p.housePosZ + Math.cos(houseRot) * offset;
+                  return { ...p, hasTerrace: true, terraceWidth: tW, terraceDepth: tD, terracePosX: x, terracePosZ: z, terraceRotation: houseRot };
+                })}>
                   <Slider label={t.width} value={house.terraceWidth} min={3} max={15} onChange={(v: number) => setHouse(p => ({...p, terraceWidth: v}))} />
                   <Slider label={t.depth} value={house.terraceDepth} min={3} max={10} onChange={(v: number) => setHouse(p => ({...p, terraceDepth: v}))} />
                   <div className="flex gap-2">
@@ -1385,7 +1474,13 @@ const Controls: React.FC<ControlsProps> = ({
                     <button onClick={() => setHouse(p => ({...p, terraceRotation: p.terraceRotation + ROTATION_STEP}))} className="flex-1 py-3 bg-slate-100 rounded-xl font-black uppercase text-[10px]"><i className="fas fa-redo mr-2"></i> +5°</button>
                   </div>
                 </ToggleObject>
-                <ToggleObject isMobileExpanded={isMobileExpanded} isFocused={selectedObjectId === 'bath'} label={t.bath} active={house.hasBath} onToggle={(v: boolean) => setHouse(p => ({...p, hasBath: v, bathWidth: v ? 4 * scaleFactor : p.bathWidth, bathDepth: v ? 6 * scaleFactor : p.bathDepth}))}>
+                <ToggleObject isMobileExpanded={isMobileExpanded} isFocused={selectedObjectId === 'bath'} label={t.bath} active={house.hasBath} onToggle={(v: boolean) => setHouse(p => {
+                  if (!v) return { ...p, hasBath: false };
+                  const bW = 4 * scaleFactor;
+                  const bD = 6 * scaleFactor;
+                  const { x, z, rotation } = getSmartPosition(p, 'bath', bW, bD);
+                  return { ...p, hasBath: true, bathWidth: bW, bathDepth: bD, bathPosX: x, bathPosZ: z, bathRotation: rotation };
+                })}>
                   <Slider label={t.width} value={house.bathWidth} min={3} max={12} onChange={(v: number) => setHouse(p => ({...p, bathWidth: v}))} />
                   <Slider label={t.depth} value={house.bathDepth} min={3} max={12} onChange={(v: number) => setHouse(p => ({...p, bathDepth: v}))} />
                   <div className="flex gap-2">
@@ -1393,7 +1488,13 @@ const Controls: React.FC<ControlsProps> = ({
                     <button onClick={() => setHouse(p => ({...p, bathRotation: p.bathRotation + ROTATION_STEP}))} className="flex-1 py-3 bg-slate-100 rounded-xl font-black uppercase text-[10px]"><i className="fas fa-redo mr-2"></i> +5°</button>
                   </div>
                 </ToggleObject>
-                <ToggleObject isMobileExpanded={isMobileExpanded} isFocused={selectedObjectId === 'bbq'} label={t.bbq} active={house.hasBBQ} onToggle={(v: boolean) => setHouse(p => ({...p, hasBBQ: v, bbqWidth: v ? 3 * scaleFactor : p.bbqWidth, bbqDepth: v ? 4 * scaleFactor : p.bbqDepth}))}>
+                <ToggleObject isMobileExpanded={isMobileExpanded} isFocused={selectedObjectId === 'bbq'} label={t.bbq} active={house.hasBBQ} onToggle={(v: boolean) => setHouse(p => {
+                  if (!v) return { ...p, hasBBQ: false };
+                  const bW = 3 * scaleFactor;
+                  const bD = 4 * scaleFactor;
+                  const { x, z, rotation } = getSmartPosition(p, 'bbq', bW, bD);
+                  return { ...p, hasBBQ: true, bbqWidth: bW, bbqDepth: bD, bbqPosX: x, bbqPosZ: z, bbqRotation: rotation };
+                })}>
                   <Slider label={t.width} value={house.bbqWidth} min={2} max={8} onChange={(v: number) => setHouse(p => ({...p, bbqWidth: v}))} />
                   <Slider label={t.depth} value={house.bbqDepth} min={2} max={8} onChange={(v: number) => setHouse(p => ({...p, bbqDepth: v}))} />
                   <div className="flex gap-2">
@@ -1401,7 +1502,13 @@ const Controls: React.FC<ControlsProps> = ({
                     <button onClick={() => setHouse(p => ({...p, bbqRotation: p.bbqRotation + ROTATION_STEP}))} className="flex-1 py-3 bg-slate-100 rounded-xl font-black uppercase text-[10px]"><i className="fas fa-redo mr-2"></i> +5°</button>
                   </div>
                 </ToggleObject>
-                <ToggleObject isMobileExpanded={isMobileExpanded} isFocused={selectedObjectId === 'customObj'} label={t.hozblock} active={house.hasCustomObj} onToggle={(v: boolean) => setHouse(p => ({...p, hasCustomObj: v, customObjWidth: v ? 3 * scaleFactor : p.customObjWidth, customObjDepth: v ? 4 * scaleFactor : p.customObjDepth}))}>
+                <ToggleObject isMobileExpanded={isMobileExpanded} isFocused={selectedObjectId === 'customObj'} label={t.hozblock} active={house.hasCustomObj} onToggle={(v: boolean) => setHouse(p => {
+                  if (!v) return { ...p, hasCustomObj: false };
+                  const cW = 3 * scaleFactor;
+                  const cD = 4 * scaleFactor;
+                  const { x, z, rotation } = getSmartPosition(p, 'customObj', cW, cD);
+                  return { ...p, hasCustomObj: true, customObjWidth: cW, customObjDepth: cD, customObjPosX: x, customObjPosZ: z, customObjRotation: rotation };
+                })}>
                   <Slider label={t.width} value={house.customObjWidth} min={2} max={10} onChange={(v: number) => setHouse(p => ({...p, customObjWidth: v}))} />
                   <Slider label={t.depth} value={house.customObjDepth} min={2} max={10} onChange={(v: number) => setHouse(p => ({...p, customObjDepth: v}))} />
                   <div className="flex gap-2">
@@ -1409,7 +1516,13 @@ const Controls: React.FC<ControlsProps> = ({
                     <button onClick={() => setHouse(p => ({...p, customObjRotation: p.customObjRotation + ROTATION_STEP}))} className="flex-1 py-3 bg-slate-100 rounded-xl font-black uppercase text-[10px]"><i className="fas fa-redo mr-2"></i> +5°</button>
                   </div>
                 </ToggleObject>
-                <ToggleObject isMobileExpanded={isMobileExpanded} isFocused={selectedObjectId === 'garage'} label={t.garage} active={house.hasGarage} onToggle={(v: boolean) => setHouse(p => ({...p, hasGarage: v}))}>
+                <ToggleObject isMobileExpanded={isMobileExpanded} isFocused={selectedObjectId === 'garage'} label={t.garage} active={house.hasGarage} onToggle={(v: boolean) => setHouse(p => {
+                  if (!v) return { ...p, hasGarage: false };
+                  const gW = getGarageWidth(p.garageCars, isSmallPlot);
+                  const gD = isSmallPlot ? 3.25 : 6.5;
+                  const { x, z, rotation } = getGatePositionAndRotation(p, gW, gD);
+                  return { ...p, hasGarage: true, garagePosX: x, garagePosZ: z, garageRotation: rotation };
+                })}>
                   <div className="flex gap-1.5 lg:gap-2 mb-2 lg:mb-4">
                     {[1, 2, 3].map(n => (
                       <button 
@@ -1432,7 +1545,13 @@ const Controls: React.FC<ControlsProps> = ({
                     <button onClick={() => setHouse(p => ({...p, garageRotation: p.garageRotation + ROTATION_STEP}))} className="flex-1 py-2 lg:py-3 bg-slate-100 rounded-lg lg:rounded-xl font-black uppercase text-[9px] lg:text-[10px]"><i className="fas fa-redo mr-1 lg:mr-2"></i> +5°</button>
                   </div>
                 </ToggleObject>
-                <ToggleObject isMobileExpanded={isMobileExpanded} isFocused={selectedObjectId === 'carport'} label={t.carport} active={house.hasCarport} onToggle={(v: boolean) => setHouse(p => ({...p, hasCarport: v}))}>
+                <ToggleObject isMobileExpanded={isMobileExpanded} isFocused={selectedObjectId === 'carport'} label={t.carport} active={house.hasCarport} onToggle={(v: boolean) => setHouse(p => {
+                  if (!v) return { ...p, hasCarport: false };
+                  const cW = getCarportWidth(p.carportCars, isSmallPlot);
+                  const cD = isSmallPlot ? 3.0 : 6.0;
+                  const { x, z, rotation } = getGatePositionAndRotation(p, cW, cD);
+                  return { ...p, hasCarport: true, carportPosX: x, carportPosZ: z, carportRotation: rotation };
+                })}>
                   <div className="flex gap-1.5 lg:gap-2 mb-2 lg:mb-4">
                     {[1, 2, 3].map(n => (
                       <button 
@@ -1506,7 +1625,7 @@ const Controls: React.FC<ControlsProps> = ({
                 </div>
                 <div className="bg-white rounded-[24px] lg:rounded-[32px] p-4 lg:p-6 border shadow-lg space-y-3 lg:space-y-4">
                   <div className="space-y-1">
-                    <p className="text-[10px] lg:text-[12px] font-black text-[#ff5f1f] uppercase tracking-widest">для получение расчетов напиши сою почту и нажми скачать проект</p>
+                    <p className="text-[10px] lg:text-[12px] font-black text-[#ff5f1f] uppercase tracking-widest">для получения расчетов напиши свою почту и нажми на ПДФ</p>
                   </div>
                   <input 
                     type="tel" 
@@ -1553,21 +1672,21 @@ const Controls: React.FC<ControlsProps> = ({
                     <button 
                       onClick={() => { handlePreviewPassport(); if(house.userEmail) handleOrderSilent(); }} 
                       disabled={!house.userEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(house.userEmail)}
-                      className="w-full py-3 lg:py-4 bg-[#0f172a] text-white rounded-xl lg:rounded-2xl font-black uppercase text-[10px] lg:text-[11px] flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="w-full py-3 lg:py-4 bg-[#ff5f1f] text-white hover:bg-[#e04d14] transition-colors rounded-xl lg:rounded-2xl font-black uppercase text-[10px] lg:text-[11px] flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <i className={`fas ${isDownloadingPassport ? 'fa-spinner fa-spin' : 'fa-file-pdf'} text-[12px] lg:text-base`}></i>ПАСПОРТ PDF
                     </button>
                     <button 
                       onClick={() => { handlePreviewCalculation(); if(house.userEmail) handleOrderSilent(); }} 
                       disabled={!house.userEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(house.userEmail)}
-                      className="w-full py-3 lg:py-4 bg-[#ff5f1f] text-white rounded-xl lg:rounded-2xl font-black uppercase text-[10px] lg:text-[11px] flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="w-full py-3 lg:py-4 bg-[#ff5f1f] text-white hover:bg-[#e04d14] transition-colors rounded-xl lg:rounded-2xl font-black uppercase text-[10px] lg:text-[11px] flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <i className={`fas ${isDownloadingCalc ? 'fa-spinner fa-spin' : 'fa-file-invoice-dollar'} text-[12px] lg:text-base`}></i>Стоимость проектирования
                     </button>
                     <button 
                       onClick={() => { handlePreviewEstimate(); if(house.userEmail) handleOrderSilent(); }} 
                       disabled={!house.userEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(house.userEmail)}
-                      className="w-full py-3 lg:py-4 bg-slate-100 text-slate-900 rounded-xl lg:rounded-2xl font-black uppercase text-[10px] lg:text-[11px] flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="w-full py-3 lg:py-4 bg-[#ff5f1f] text-white hover:bg-[#e04d14] transition-colors rounded-xl lg:rounded-2xl font-black uppercase text-[10px] lg:text-[11px] flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <i className={`fas ${isDownloadingEstimate ? 'fa-spinner fa-spin' : 'fa-file-invoice'} text-[12px] lg:text-base`}></i>Стоимость строительства
                     </button>
@@ -1647,23 +1766,37 @@ const Controls: React.FC<ControlsProps> = ({
             </div>
           </div>
           <div 
-            className="flex-1 overflow-auto p-4 lg:p-8 relative"
-            onWheel={(e) => {
-              if (!isMobile) {
-                e.preventDefault();
-                const zoomChange = e.deltaY > 0 ? -0.1 : 0.1;
-                setPreviewPdfZoom(z => Math.max(0.5, Math.min(3, z + zoomChange)));
+            ref={pdfContainerRef}
+            className={`flex-1 overflow-auto p-4 lg:p-8 relative ${isPdfDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
+            onPointerDown={(e) => {
+              setIsPdfDragging(true);
+              setPdfDragStart({ x: e.clientX, y: e.clientY });
+              if (pdfContainerRef.current) {
+                setPdfScrollStart({
+                  left: pdfContainerRef.current.scrollLeft,
+                  top: pdfContainerRef.current.scrollTop
+                });
               }
             }}
+            onPointerMove={(e) => {
+              if (!isPdfDragging || !pdfContainerRef.current) return;
+              const dx = e.clientX - pdfDragStart.x;
+              const dy = e.clientY - pdfDragStart.y;
+              pdfContainerRef.current.scrollLeft = pdfScrollStart.left - dx;
+              pdfContainerRef.current.scrollTop = pdfScrollStart.top - dy;
+            }}
+            onPointerUp={() => setIsPdfDragging(false)}
+            onPointerLeave={() => setIsPdfDragging(false)}
           >
-            <div className="min-h-full flex items-center justify-center">
+            <div className="min-h-full min-w-full flex items-center justify-center m-auto">
               <img 
                 src={previewPdfUrl} 
-                className="shadow-2xl bg-white transition-transform duration-200 origin-center" 
+                className="shadow-2xl bg-white pointer-events-none" 
                 style={{ 
-                  transform: `scale(${previewPdfZoom})`,
+                  width: `${previewPdfZoom * 100}%`,
                   maxWidth: previewPdfZoom <= 1 ? '100%' : 'none',
-                  height: 'auto'
+                  height: 'auto',
+                  transition: isPdfDragging ? 'none' : 'width 0.2s ease-out'
                 }} 
                 alt="PDF Preview" 
               />

@@ -156,12 +156,30 @@ const MapBuilder: React.FC<MapBuilderProps> = ({ house, onConfirm, onCancel }) =
     const latOffset = (house.plotLength / 111320) / 2;
     const lngOffset = (house.plotWidth / (111320 * Math.cos(initialPos[0] * Math.PI / 180))) / 2;
     
-    const poly = L.polygon([
-      [initialPos[0] + latOffset, initialPos[1] - lngOffset],
-      [initialPos[0] + latOffset, initialPos[1] + lngOffset],
-      [initialPos[0] - latOffset, initialPos[1] + lngOffset],
-      [initialPos[0] - latOffset, initialPos[1] - lngOffset]
-    ], {
+    let initialLatLngs;
+    if (house.plotCorners && house.plotCorners.vertices && house.mapCenter) {
+      // Restore from saved vertices
+      const centerPoint = map.project(initialPos, map.getZoom());
+      const p1 = map.getCenter();
+      const p2 = map.unproject(map.project(p1).add(L.point(1, 0)));
+      const metersPerPixel = map.distance(p1, p2);
+      
+      initialLatLngs = house.plotCorners.vertices.map(v => {
+        const dx = v.x / metersPerPixel;
+        const dy = v.z / metersPerPixel;
+        const point = L.point(centerPoint.x + dx, centerPoint.y + dy);
+        return map.unproject(point, map.getZoom());
+      });
+    } else {
+      initialLatLngs = [
+        [initialPos[0] + latOffset, initialPos[1] - lngOffset],
+        [initialPos[0] + latOffset, initialPos[1] + lngOffset],
+        [initialPos[0] - latOffset, initialPos[1] + lngOffset],
+        [initialPos[0] - latOffset, initialPos[1] - lngOffset]
+      ];
+    }
+    
+    const poly = L.polygon(initialLatLngs, {
       color: '#FFFB00',
       weight: 6,
       fillColor: '#FFFB00',

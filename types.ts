@@ -101,6 +101,8 @@ export interface HouseState {
   description: string;
   plotWidth: number;
   plotLength: number;
+  showShadows?: boolean;
+  sunTime?: number;
   plotCorners?: PlotCorners; 
   gatePosX: number;
   gateSideIndex: number; // Индекс сегмента участка, на котором находятся ворота

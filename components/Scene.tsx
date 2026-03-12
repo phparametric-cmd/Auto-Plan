@@ -1,16 +1,17 @@
 
 import React, { Suspense, useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { Canvas, ThreeEvent, useThree } from '@react-three/fiber';
-import { OrbitControls, PerspectiveCamera, Environment, ContactShadows, Billboard, Html } from '@react-three/drei';
+import { CameraControls, PerspectiveCamera, Environment, ContactShadows, Billboard, Html } from '@react-three/drei';
 import House from './House';
 import Plot from './Plot';
 import DimensionLines from './DimensionLines';
 import { HouseState, PlotCorners, Point2D } from '../types';
 import * as THREE from 'three';
 import { getTranslation } from '../services/i18n';
+import { getGatePositionAndRotation } from '../services/placement';
 
-const getGarageWidth = (cars: number) => (cars === 1 ? 4.5 : (cars === 2 ? 7.5 : 10.5));
-const getCarportWidth = (cars: number) => (cars === 1 ? 4 : (cars === 2 ? 7 : 10));
+const getGarageWidth = (cars: number, isSmall: boolean = false) => (cars === 1 ? 4.5 : (cars === 2 ? 7.5 : 10.5)) * (isSmall ? 0.5 : 1);
+const getCarportWidth = (cars: number, isSmall: boolean = false) => (cars === 1 ? 4 : (cars === 2 ? 7 : 10)) * (isSmall ? 0.5 : 1);
 
 interface SceneProps {
   house: HouseState;
@@ -130,15 +131,15 @@ const ObjectSettingsOverlay = ({ id, house, setHouse, onClose, t, isXFlashing }:
     }
   } else if (id === 'garage') {
     label = t.garage;
-    width = getGarageWidth(house.garageCars);
-    depth = 6.5;
+    width = getGarageWidth(house.garageCars, isSmallPlot);
+    depth = isSmallPlot ? 3.25 : 6.5;
     rotation = house.garageRotation;
     isGarageOrCarport = true;
     cars = house.garageCars;
   } else if (id === 'carport') {
     label = t.carport;
-    width = getCarportWidth(house.carportCars);
-    depth = 6.0;
+    width = getCarportWidth(house.carportCars, isSmallPlot);
+    depth = isSmallPlot ? 3.0 : 6.0;
     rotation = house.carportRotation;
     isGarageOrCarport = true;
     cars = house.carportCars;
@@ -212,8 +213,8 @@ const ObjectSettingsOverlay = ({ id, house, setHouse, onClose, t, isXFlashing }:
                 <button 
                   key={n} 
                   onClick={() => {
-                    const newWidth = id === 'garage' ? getGarageWidth(n) : getCarportWidth(n);
-                    const newDepth = id === 'garage' ? 6.5 : 6.0;
+                    const newWidth = id === 'garage' ? getGarageWidth(n, isSmallPlot) : getCarportWidth(n, isSmallPlot);
+                    const newDepth = id === 'garage' ? (isSmallPlot ? 3.25 : 6.5) : (isSmallPlot ? 3.0 : 6.0);
                     handleUpdate({ 
                       [`${id}Cars`]: n,
                       [`${id}Width`]: newWidth,
@@ -368,15 +369,22 @@ const LandscapeObject = ({ id, label, pos, color, args, onDragStart, isStepActiv
 const NorthArrow = ({ corners }: { corners: PlotCorners }) => {
   const pos = corners.nw;
   return (
-    <Html position={[pos.x - 1, 0, pos.z - 1]} center>
-      <div className="flex flex-col items-center opacity-40 pointer-events-none select-none scale-75">
-        <div className="w-0.5 h-8 bg-slate-500 relative flex items-center justify-center">
-          <div className="absolute -top-1.5 w-0 h-0 border-l-[4px] border-l-transparent border-r-[4px] border-r-transparent border-b-[8px] border-b-slate-500"></div>
-          <div className="absolute -bottom-0.5 w-1.5 h-1.5 rounded-full bg-slate-500"></div>
-        </div>
-        <span className="text-[8px] font-black text-slate-500 mt-1 tracking-tighter">N</span>
-      </div>
-    </Html>
+    <group position={[pos.x - 2, 0.1, pos.z - 2]}>
+      {/* Line */}
+      <mesh position={[0, 0, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <planeGeometry args={[0.1, 2]} />
+        <meshBasicMaterial color="#64748b" transparent opacity={0.6} />
+      </mesh>
+      {/* Arrow head pointing to -Z */}
+      <mesh position={[0, 0, -1]} rotation={[-Math.PI / 2, 0, 0]}>
+        <coneGeometry args={[0.3, 0.6, 3]} />
+        <meshBasicMaterial color="#64748b" transparent opacity={0.6} />
+      </mesh>
+      {/* N text */}
+      <Html position={[0, 0.1, -1.6]} center transform rotation={[-Math.PI / 2, 0, 0]}>
+        <div className="text-[14px] font-black text-slate-500 select-none">N</div>
+      </Html>
+    </group>
   );
 };
 
@@ -384,6 +392,44 @@ const SceneContent = ({ house, setHouse, showHouse, currentStep, selectedObjectI
   const { camera, raycaster } = useThree();
   const t = getTranslation(house.lang);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
+
+  const cameraControlsRef = useRef<any>(null);
+
+  useEffect(() => {
+    if (!cameraControlsRef.current) return;
+    const controls = cameraControlsRef.current;
+    
+    // Calculate bounding box for plot to know how far to zoom out
+    const c = house.plotCorners || { nw: { x: -house.plotWidth/2, z: -house.plotLength/2 }, ne: { x: house.plotWidth/2, z: -house.plotLength/2 }, se: { x: house.plotWidth/2, z: house.plotLength/2 }, sw: { x: -house.plotWidth/2, z: house.plotLength/2 } };
+    const v = c.vertices || [c.nw, c.ne, c.se, c.sw];
+    let minX = 0, maxX = 0, minZ = 0, maxZ = 0;
+    if (v.length > 0) {
+      minX = Math.min(...v.map((p:any) => p.x));
+      maxX = Math.max(...v.map((p:any) => p.x));
+      minZ = Math.min(...v.map((p:any) => p.z));
+      maxZ = Math.max(...v.map((p:any) => p.z));
+    }
+    const plotWidth = maxX - minX;
+    const plotLength = maxZ - minZ;
+    const plotSize = Math.max(plotWidth, plotLength);
+    
+    if (currentStep === 0) {
+      // Step 0 (Участок): Top-Down view, zoom out further
+      controls.setLookAt(0, plotSize * 1.5 + 40, 0, 0, 0, 0, true);
+    } else if (currentStep === 1) {
+      // Step 1 (Планировка): Isometric view, zoomed in on house
+      const hx = house.housePosX;
+      const hz = house.housePosZ;
+      const houseSize = Math.max(house.houseWidth, house.houseLength);
+      controls.setLookAt(hx + houseSize * 0.8 + 10, houseSize * 0.8 + 10, hz + houseSize * 0.8 + 10, hx, 0, hz, true);
+    } else if (currentStep === 2) {
+      // Step 2 (Объекты): Isometric view, zoomed out further
+      controls.setLookAt(plotSize * 1.2 + 20, plotSize * 1.2 + 20, plotSize * 1.2 + 20, 0, 0, 0, true);
+    } else if (currentStep === 3) {
+      // Step 3 (Финиш): Top-Down view
+      controls.setLookAt(0, plotSize * 1.5 + 40, 0, 0, 0, 0, true);
+    }
+  }, [currentStep, house.plotWidth, house.plotLength, house.housePosX, house.housePosZ, house.houseWidth, house.houseLength, house.plotCorners]);
 
   const [draggingItem, setDraggingItem] = useState<string | null>(null);
   const [resizingCorner, setResizingCorner] = useState<string | null>(null);
@@ -406,6 +452,8 @@ const SceneContent = ({ house, setHouse, showHouse, currentStep, selectedObjectI
   const plotVertices = useMemo(() => {
     return corners.vertices || [corners.nw, corners.ne, corners.se, corners.sw];
   }, [corners]);
+
+  const isSmallPlot = house.plotWidth < 20 || house.plotLength < 20;
 
   const handleDragStart = useCallback((id: string, e: any) => { 
     if (activeSettingId) {
@@ -574,8 +622,8 @@ const SceneContent = ({ house, setHouse, showHouse, currentStep, selectedObjectI
           'bath': [house.bathWidth, house.bathDepth, house.bathRotation], 
           'bbq': [house.bbqWidth, house.bbqDepth, house.bbqRotation],
           'customObj': [house.customObjWidth, house.customObjDepth, house.customObjRotation],
-          'garage': [getGarageWidth(house.garageCars), 6.5, house.garageRotation],
-          'carport': [getCarportWidth(house.carportCars), 6.0, house.carportRotation]
+          'garage': [getGarageWidth(house.garageCars, isSmallPlot), isSmallPlot ? 3.25 : 6.5, house.garageRotation],
+          'carport': [getCarportWidth(house.carportCars, isSmallPlot), isSmallPlot ? 3.0 : 6.0, house.carportRotation]
         };
         if (map[draggingItem]) { 
           width = map[draggingItem][0]; 
@@ -616,13 +664,27 @@ const SceneContent = ({ house, setHouse, showHouse, currentStep, selectedObjectI
   return (
     <group>
       <PerspectiveCamera makeDefault position={[80, 80, 80]} fov={35} />
-      <OrbitControls 
+      <CameraControls 
+        ref={cameraControlsRef}
         enabled={!draggingItem && !(resizingCorner || draggingGate)} 
         minDistance={10} 
         maxDistance={600} 
-        maxPolarAngle={Math.PI / 2.1} 
+        maxPolarAngle={currentStep === 0 ? 0 : Math.PI / 2.1} 
+        minPolarAngle={currentStep === 0 ? 0 : 0}
+        maxAzimuthAngle={currentStep === 0 ? 0 : Infinity}
+        minAzimuthAngle={currentStep === 0 ? 0 : -Infinity}
+        mouseButtons={{
+          left: currentStep === 0 ? 2 : 1,
+          middle: 8,
+          right: 2,
+          wheel: 8,
+        }}
+        touches={{
+          one: currentStep === 0 ? 64 : 32,
+          two: 1024,
+          three: 64,
+        }}
         makeDefault 
-        target={[0, 0, 0]}
       />
       
       <Plot 
@@ -636,11 +698,33 @@ const SceneContent = ({ house, setHouse, showHouse, currentStep, selectedObjectI
           e.stopPropagation(); 
           setActiveSettingId(null);
         }} 
-        onUpdateGateSide={(idx, pos) => setHouse(p => ({ 
-          ...p, 
-          gateSideIndex: idx,
-          gatePosX: pos !== undefined ? pos : p.gatePosX 
-        }))}
+        onUpdateGateSide={(idx, pos) => setHouse(p => {
+          const newState = { 
+            ...p, 
+            gateSideIndex: idx,
+            gatePosX: pos !== undefined ? pos : p.gatePosX 
+          };
+          
+          // Update garage and carport positions if they exist
+          if (newState.hasGarage) {
+            const gW = getGarageWidth(newState.garageCars, newState.plotWidth < 20 || newState.plotLength < 20);
+            const gD = (newState.plotWidth < 20 || newState.plotLength < 20) ? 3.25 : 6.5;
+            const { x, z, rotation } = getGatePositionAndRotation(newState, gW, gD);
+            newState.garagePosX = x;
+            newState.garagePosZ = z;
+            newState.garageRotation = rotation;
+          }
+          if (newState.hasCarport) {
+            const cW = getCarportWidth(newState.carportCars, newState.plotWidth < 20 || newState.plotLength < 20);
+            const cD = (newState.plotWidth < 20 || newState.plotLength < 20) ? 3.0 : 6.0;
+            const { x, z, rotation } = getGatePositionAndRotation(newState, cW, cD);
+            newState.carportPosX = x;
+            newState.carportPosZ = z;
+            newState.carportRotation = rotation;
+          }
+          
+          return newState;
+        })}
         customHandlePointerDown={handleResizeStart} 
       />
       
@@ -648,7 +732,7 @@ const SceneContent = ({ house, setHouse, showHouse, currentStep, selectedObjectI
       
       {showHouse && (
         <group position={[houseX, 0, houseZ]} rotation={[0, house.houseRotation || 0, 0]} onPointerDown={(e) => { e.stopPropagation(); }}>
-          <House state={house} selected={selectedObjectId === 'house'} onDragStart={(e) => handleDragStart('house', e)} />
+          <House state={house} selected={selectedObjectId === 'house'} onDragStart={(e) => handleDragStart('house', e)} isTransparent={currentStep === 1} />
           <ObjectLabel 
             label="ДОМ" 
             width={house.houseWidth} 
@@ -667,7 +751,7 @@ const SceneContent = ({ house, setHouse, showHouse, currentStep, selectedObjectI
         const [addX, addZ] = getEffectivePos(addId, add.posX, add.posZ);
         return (
           <group key={add.id} position={[addX, 0, addZ]} rotation={[0, add.rotation, 0]} onPointerDown={(e) => { e.stopPropagation(); }}>
-            <House state={{ ...house, houseWidth: add.width, houseLength: add.length, floors: add.floors }} isAddition={true} selected={selectedObjectId === addId} onDragStart={(e) => handleDragStart(addId, e)} />
+            <House state={{ ...house, houseWidth: add.width, houseLength: add.length, floors: add.floors }} isAddition={true} selected={selectedObjectId === addId} onDragStart={(e) => handleDragStart(addId, e)} isTransparent={currentStep === 1} />
             <ObjectLabel 
               label={`ПРИСТРОЙКА ${idx + 1}`} 
               width={add.width} 
@@ -686,8 +770,8 @@ const SceneContent = ({ house, setHouse, showHouse, currentStep, selectedObjectI
       {house.hasBath && <LandscapeObject id="bath" label={t.bath} pos={getEffectivePos('bath', house.bathPosX, house.bathPosZ)} color="#78350f" args={[house.bathWidth, 2.8, house.bathDepth]} rotation={house.bathRotation} onDragStart={(e:any) => handleDragStart('bath', e)} isStepActive={true} isSelected={selectedObjectId === 'bath'} house={house} setHouse={setHouse} isMobile={isMobile} onSelectObject={onSelectObject} activeSettingId={activeSettingId} setActiveSettingId={setActiveSettingId} />}
       {house.hasBBQ && <LandscapeObject id="bbq" label={t.bbq} pos={getEffectivePos('bbq', house.bbqPosX, house.bbqPosZ)} color="#475569" args={[house.bbqWidth, 2.5, house.bbqDepth]} rotation={house.bbqRotation} onDragStart={(e:any) => handleDragStart('bbq', e)} isStepActive={true} isSelected={selectedObjectId === 'bbq'} house={house} setHouse={setHouse} isMobile={isMobile} onSelectObject={onSelectObject} activeSettingId={activeSettingId} setActiveSettingId={setActiveSettingId} />}
       {house.hasCustomObj && <LandscapeObject id="customObj" label={t.hozblock} pos={getEffectivePos('customObj', house.customObjPosX, house.customObjPosZ)} color="#475569" args={[house.customObjWidth, 2.5, house.customObjDepth]} rotation={house.customObjRotation} onDragStart={(e:any) => handleDragStart('customObj', e)} isStepActive={true} isSelected={selectedObjectId === 'customObj'} house={house} setHouse={setHouse} isMobile={isMobile} onSelectObject={onSelectObject} activeSettingId={activeSettingId} setActiveSettingId={setActiveSettingId} />}
-      {house.hasGarage && <LandscapeObject id="garage" label={t.garage} pos={getEffectivePos('garage', house.garagePosX, house.garagePosZ)} color="#1e293b" args={[getGarageWidth(house.garageCars), 3, 6.5]} rotation={house.garageRotation} onDragStart={(e:any) => handleDragStart('garage', e)} isStepActive={true} isSelected={selectedObjectId === 'garage'} house={house} setHouse={setHouse} isMobile={isMobile} onSelectObject={onSelectObject} activeSettingId={activeSettingId} setActiveSettingId={setActiveSettingId} />}
-      {house.hasCarport && <LandscapeObject id="carport" label={t.carport} pos={getEffectivePos('carport', house.carportPosX, house.carportPosZ)} color="#64748b" args={[getCarportWidth(house.carportCars), 2.8, 6.0]} rotation={house.carportRotation} onDragStart={(e:any) => handleDragStart('carport', e)} isStepActive={true} isSelected={selectedObjectId === 'carport'} house={house} setHouse={setHouse} isMobile={isMobile} onSelectObject={onSelectObject} activeSettingId={activeSettingId} setActiveSettingId={setActiveSettingId} />}
+      {house.hasGarage && <LandscapeObject id="garage" label={t.garage} pos={getEffectivePos('garage', house.garagePosX, house.garagePosZ)} color="#1e293b" args={[getGarageWidth(house.garageCars, isSmallPlot), 3, isSmallPlot ? 3.25 : 6.5]} rotation={house.garageRotation} onDragStart={(e:any) => handleDragStart('garage', e)} isStepActive={true} isSelected={selectedObjectId === 'garage'} house={house} setHouse={setHouse} isMobile={isMobile} onSelectObject={onSelectObject} activeSettingId={activeSettingId} setActiveSettingId={setActiveSettingId} />}
+      {house.hasCarport && <LandscapeObject id="carport" label={t.carport} pos={getEffectivePos('carport', house.carportPosX, house.carportPosZ)} color="#64748b" args={[getCarportWidth(house.carportCars, isSmallPlot), 2.8, isSmallPlot ? 3.0 : 6.0]} rotation={house.carportRotation} onDragStart={(e:any) => handleDragStart('carport', e)} isStepActive={true} isSelected={selectedObjectId === 'carport'} house={house} setHouse={setHouse} isMobile={isMobile} onSelectObject={onSelectObject} activeSettingId={activeSettingId} setActiveSettingId={setActiveSettingId} />}
       
       <DimensionLines currentStep={currentStep} corners={corners} houseWidth={house.houseWidth} houseLength={house.houseLength} housePosX={houseX} housePosZ={houseZ} showHouse={showHouse} />
       
@@ -716,6 +800,30 @@ const Scene: React.FC<SceneProps> = (props) => {
     setTimeout(() => setIsXFlashing(false), 600);
   };
 
+  const getSunSettings = () => {
+    if (!props.house.showShadows) {
+      return { pos: [10, 20, 10] as [number, number, number], intensity: 1.5, ambient: 1.5 };
+    }
+    const time = props.house.sunTime || 12;
+    // Map 6..20 to 0..PI
+    const theta = ((time - 6) / 14) * Math.PI;
+    const radius = 60;
+    
+    // East (+X) to West (-X)
+    const x = Math.cos(theta) * radius;
+    // Arching up and down
+    const y = Math.max(Math.sin(theta) * radius, 5);
+    // Pushing south (+Z) at noon
+    const z = Math.sin(theta) * 30;
+    
+    const intensity = Math.max(0.5, Math.sin(theta) * 2.5);
+    const ambient = Math.max(0.2, Math.sin(theta) * 0.8);
+    
+    return { pos: [x, y, z] as [number, number, number], intensity, ambient };
+  };
+
+  const sun = getSunSettings();
+
   return (
     <div className="absolute inset-0 z-0">
       <Canvas shadows gl={{ antialias: true, preserveDrawingBuffer: true }} onPointerDown={() => {
@@ -723,8 +831,19 @@ const Scene: React.FC<SceneProps> = (props) => {
         setActiveSettingId(null);
       }}>
         <color attach="background" args={['#ffffff']} />
-        <ambientLight intensity={1.5} />
-        <directionalLight position={[10, 20, 10]} intensity={1.5} castShadow shadow-mapSize={[2048, 2048]} />
+        <ambientLight intensity={sun.ambient} />
+        <directionalLight 
+          position={sun.pos} 
+          intensity={sun.intensity} 
+          castShadow 
+          shadow-mapSize={[2048, 2048]} 
+          shadow-camera-left={-60}
+          shadow-camera-right={60}
+          shadow-camera-top={60}
+          shadow-camera-bottom={-60}
+          shadow-camera-near={0.1}
+          shadow-camera-far={200}
+        />
         <Suspense fallback={null}>
           <SceneContent {...props} activeSettingId={activeSettingId} setActiveSettingId={setActiveSettingId} onTriggerXFlash={triggerXFlash} isXFlashing={isXFlashing} />
         </Suspense>

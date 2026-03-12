@@ -68,11 +68,14 @@ async function startServer() {
     
     // Ignore polling errors to prevent console spam when both dev and preview containers run the bot
     bot.on('polling_error', (error: any) => {
-      if (error.code === 'ETELEGRAM' && error.message.includes('409 Conflict')) {
-        // Silently ignore 409 Conflict errors caused by multiple containers
-      } else {
-        console.error("Telegram polling error:", error.message);
+      const isConflict = error.code === 'ETELEGRAM' && error.message?.includes('409 Conflict');
+      const isNetworkError = error.message?.includes('ECONNRESET') || error.message?.includes('EFATAL') || error.code === 'EFATAL';
+      
+      if (isConflict || isNetworkError) {
+        // Silently ignore 409 Conflict errors and transient network disconnects
+        return;
       }
+      console.error("Telegram polling error:", error.message || error);
     });
 
     bot.getMe().then(info => {
@@ -103,8 +106,76 @@ async function startServer() {
         }
         
         await bot!.sendMessage(chatId, "Наш архитектор свяжется с вами в ближайшее время для обсуждения деталей. Если у вас есть вопросы, можете задать их прямо здесь!");
+        
+        // Уведомляем менеджера о том, что клиент зашел в бота
+        const managerChatId = process.env.MANAGER_CHAT_ID || "8128470896";
+        const clientUser = msg.from;
+        let clientLink = "Скрыт настройками приватности";
+        if (clientUser?.username) {
+          clientLink = `@${clientUser.username}`;
+        } else if (clientUser?.id) {
+          clientLink = `<a href="tg://user?id=${clientUser.id}">${clientUser.first_name || 'Клиент'}</a>`;
+        }
+        
+        const managerMsg = `🔔 <b>КЛИЕНТ ПЕРЕШЕЛ В БОТА!</b>\n\n` +
+                           `Имя в приложении: ${houseData.userName || 'Не указано'}\n` +
+                           `Телефон: ${houseData.userPhone || 'Не указан'}\n` +
+                           `Email: ${houseData.userEmail || 'Не указан'}\n` +
+                           `Профиль Telegram: ${clientLink}\n` +
+                           `Проект: ${houseData.name}`;
+                           
+        await bot!.sendMessage(managerChatId, managerMsg, { parse_mode: 'HTML' });
+      } else if (projectId) {
+        // Если проект не найден в кэше этого контейнера (из-за того, что работают 2 сервера: dev и preview)
+        bot!.sendMessage(chatId, "⏳ Проект обрабатывается сервером...\n\nЕсли ваш проект не появится здесь в течение 5 секунд, пожалуйста, вернитесь в приложение и нажмите кнопку «Получить в Telegram» еще раз.");
       } else {
-        bot!.sendMessage(chatId, "Добро пожаловать в PH HOME! К сожалению, проект не найден или ссылка устарела.");
+        bot!.sendMessage(chatId, "Добро пожаловать в PH HOME! Отправьте проект из приложения, чтобы увидеть его здесь.");
+      }
+    });
+
+    // Пересылка сообщений между клиентом и менеджером (чат через бота)
+    bot.on('message', async (msg) => {
+      // Игнорируем команды вроде /start
+      if (msg.text && msg.text.startsWith('/')) return;
+      
+      const managerChatId = process.env.MANAGER_CHAT_ID || "8128470896";
+      
+      // 1. Если пишет менеджер (ответ клиенту)
+      if (msg.chat.id.toString() === managerChatId) {
+        if (msg.reply_to_message && msg.reply_to_message.text) {
+          // Ищем ID клиента в тексте сообщения, на которое отвечает менеджер
+          const match = msg.reply_to_message.text.match(/ID:\s*(\d+)/);
+          if (match && match[1]) {
+            const clientId = match[1];
+            try {
+              if (msg.text) {
+                await bot!.sendMessage(clientId, msg.text);
+              } else {
+                await bot!.sendMessage(managerChatId, "Бот пока поддерживает только текстовые ответы.");
+              }
+            } catch (e) {
+              await bot!.sendMessage(managerChatId, "❌ Ошибка при отправке ответа клиенту. Возможно, он заблокировал бота.");
+            }
+          }
+        }
+        return;
+      }
+      
+      // 2. Если пишет клиент (пересылаем менеджеру)
+      const clientName = msg.from?.first_name || 'Клиент';
+      const clientUsername = msg.from?.username ? `(@${msg.from.username})` : '';
+      const text = msg.text || '[Не текстовое сообщение]';
+      
+      const relayMsg = `💬 <b>Новое сообщение от клиента</b>\n` +
+                       `От: ${clientName} ${clientUsername}\n` +
+                       `ID: ${msg.chat.id}\n\n` +
+                       `${text}\n\n` +
+                       `<i>(Чтобы ответить, сделайте Reply / Ответить на это сообщение)</i>`;
+                       
+      try {
+        await bot!.sendMessage(managerChatId, relayMsg, { parse_mode: 'HTML' });
+      } catch (e) {
+        console.error("Relay error:", e);
       }
     });
   }
@@ -123,7 +194,7 @@ async function startServer() {
     // Используем ID чата из переменных окружения, либо вы можете вписать его сюда напрямую
     // Чтобы бот мог отправить сообщение на номер +77072207261, 
     // владелец этого номера должен написать боту /start и узнать свой chat_id
-    const managerChatId = process.env.MANAGER_CHAT_ID || "YOUR_CHAT_ID_HERE";
+    const managerChatId = process.env.MANAGER_CHAT_ID || "8128470896";
     
     if (bot && managerChatId && managerChatId !== "YOUR_CHAT_ID_HERE") {
       try {

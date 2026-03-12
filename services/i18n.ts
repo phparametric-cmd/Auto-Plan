@@ -12,6 +12,7 @@ export const translations = {
     phonePlaceholder: "+7 Телефон",
     apply: "ПРИМЕНИТЬ",
     createProject: "Создать проект",
+    continueEditing: "Продолжить изменения",
     backToStyles: "Вернуться к выбору стиля",
     plotParams: "УЧАСТОК",
     plotArea: "ПЛОЩАДЬ УЧАСТКА",
@@ -100,13 +101,13 @@ export const translations = {
       "ШАГ 1: ДОМ И УЧАСТОК\nНастройте форму участка, потянув за синие углы. Укажите размеры дома, количество этажей и переместите его по участку. Вы также можете добавить пристройку.",
       "ШАГ 2: ПЛАНИРОВКА\nСистема автоматически делит площадь этажа. Изменяйте названия комнат и их площадь. Нажмите на 'замок', чтобы зафиксировать площадь важной комнаты.",
       "ШАГ 3: ОБЪЕКТЫ\nДобавьте на участок террасу, бассейн, баню, хозблок или парковку. Активируйте объект и настройте его размеры. Все объекты можно свободно перемещать.",
-      "ШАГ 4: ФИНИШ\nНапишите дополнительные пожелания и прикрепите файлы. Проверьте сформированные PDF. Для получения расчетов введите свою почту и нажмите скачать проект."
+      "ШАГ 4: ФИНИШ\nНапишите дополнительные пожелания и прикрепите файлы. Проверьте сформированные PDF. Для получения расчетов введите свою почту и нажмите на ПДФ."
     ],
     guidance: [
       "Привет! Начнем с участка и дома. Настрой границы участка и найди лучшее расположение для своего будущего дома!",
       "Распредели площади комнат. Продумай, сколько комнат и какой площади тебе нужно.",
       "Участок — это не только дом. Добавь зону отдыха, бассейн, баню или удобную парковку для авто!",
-      "Почти готово! Вы всегда можете вернуться назад для правок. Введи почту и скачай свой проект."
+      "Почти готово! Вы всегда можете вернуться назад для правок. Введи почту, чтобы посмотреть и скачать ПДФ файлы с расчетами и архитектурным паспортом."
     ],
     rooms: {
       hallway: "Прихожая",
@@ -135,6 +136,7 @@ export const translations = {
     phonePlaceholder: "Phone Number",
     apply: "APPLY",
     createProject: "Create Project",
+    continueEditing: "Continue Editing",
     backToStyles: "Back to styles",
     plotParams: "PLOT",
     plotArea: "PLOT AREA",
@@ -223,13 +225,13 @@ export const translations = {
       "STEP 1: HOUSE & PLOT\nAdjust the plot shape by dragging its blue corners. Set the house dimensions, number of floors, and move it around the plot. You can also add an extension.",
       "STEP 2: ROOM PLANNING\nThe system automatically divides the floor area. Change room names and areas. Click the 'lock' icon to fix the area of a specific room.",
       "STEP 3: LANDSCAPE OBJECTS\nAdd a terrace, pool, bathhouse, storage, or parking. Activate the object and set its dimensions. All objects can be moved freely.",
-      "STEP 4: FINALIZING\nAdd any final wishes and upload files. Review the generated PDFs. Enter your email and click download to get the project calculations."
+      "STEP 4: FINALIZING\nAdd any final wishes and upload files. Review the generated PDFs. Enter your email and click on PDF to get the project calculations."
     ],
     guidance: [
       "Hi! Let's start with the plot and house. Set the plot boundaries and find the best spot for your future home!",
       "Plan your rooms wisely. Think about how many rooms you need and their sizes.",
       "The plot is more than just a house. Add a leisure area, pool, bathhouse, or convenient parking!",
-      "Almost done! You can always go back for edits. Enter your email and download your project."
+      "Almost done! You can always go back for edits. Enter your email to view and download PDF files with calculations and the architectural passport."
     ],
     rooms: {
       hallway: "Hallway",
@@ -258,6 +260,7 @@ export const translations = {
     phonePlaceholder: "Телефон нөмірі",
     apply: "ҚОЛДАНУ",
     createProject: "Жобаны бастау",
+    continueEditing: "Өзгерістерді жалғастыру",
     backToStyles: "Стильге оралу",
     plotParams: "УЧАСКЕ",
     plotArea: "УЧАСКЕ АУДАНЫ",
@@ -346,13 +349,13 @@ export const translations = {
       "1-ҚАДАМ: ҮЙ ЖӘНЕ УЧАСКЕ\nКөк бұрыштарды тарту арқылы учаскенің пішінін реттеңіз. Үйдің өлшемдерін, қабат санын көрсетіңіз және оны учаске бойымен жылжытыңыз. Сондай-ақ қосымша құрылыс қосуға болады.",
       "2-ҚАДАМ: БӨЛМЕЛЕРДІ ЖОСПАРЛАУ\nЖүйе қабат ауданын автоматты түрде бөледі. Бөлме атаулары мен ауданын өзгертіңіз. Маңызды бөлменің ауданын бекіту үшін 'құлып' белгішесін басыңыз.",
       "3-ҚАДАМ: НЫСАНДАР\nУчаскеге терраса, бассейн, монша, шаруашылық блок немесе тұрақ қосыңыз. Нысанды белсендіріп, оның өлшемдерін баптаңыз. Барлық нысандарды еркін жылжытуға болады.",
-      "4-ҚАДАМ: АЯҚТАУ\nҚосымша тілектеріңізді жазып, файлдарды тіркеңіз. Жасалған PDF файлдарды тексеріңіз. Есептеулерді алу үшін поштаңызды енгізіп, жобаны жүктеп алу түймесін басыңыз."
+      "4-ҚАДАМ: АЯҚТАУ\nҚосымша тілектеріңізді жазып, файлдарды тіркеңіз. Жасалған PDF файлдарды тексеріңіз. Есептеулерді алу үшін поштаңызды енгізіп, PDF түймесін басыңыз."
     ],
     guidance: [
       "Сәлем! Учаске мен үйден бастайық. Учаске шекараларын баптап, болашақ үйіңіз үшін ең жақсы орынды табыңыз!",
       "Бөлмелердің ауданын бөліңіз. Қанша бөлме және қандай аудан қажет екенін ойластырыңыз.",
       "Учаске — бұл тек үй емес. Демалыс аймағын, бассейн, монша немесе көлікке ыңғайлы тұрақ қосыңыз!",
-      "Дайын дерлік! Түзетулер үшін кез келген уақытта артқа орала аласыз. Поштаңызды енгізіп, жобаңызды жүктеп алыңыз."
+      "Дайын дерлік! Түзетулер үшін кез келген уақытта артқа орала аласыз. Есептеулер мен сәулет паспорты бар PDF файлдарды көру және жүктеп алу үшін поштаңызды енгізіңіз."
     ],
     rooms: {
       hallway: "Кіреберіс",

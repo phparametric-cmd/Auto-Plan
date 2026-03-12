@@ -213,7 +213,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onStart, existingData, on
                 onClick={handleStart} 
                 className={`w-full py-5 lg:py-4 rounded-xl font-black uppercase tracking-widest text-[12px] lg:text-[10px] transition-all shadow-xl active:scale-95 ${!isFormValid ? 'bg-slate-100 text-slate-300' : 'bg-slate-900 text-white hover:bg-[#ff5f1f]'}`}
               >
-                {t.createProject}
+                {existingData?.userName ? t.continueEditing : t.createProject}
               </button>
            </div>
         </div>

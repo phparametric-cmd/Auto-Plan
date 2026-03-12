@@ -148,7 +148,7 @@ export const generateConstructionEstimate = async (house: HouseState): Promise<s
   const PRICE_BATH = 343750; // Уменьшено в 2 раза
   const PRICE_GARAGE = 280000; // Уменьшено на 20%
   const PRICE_CARPORT = 78000; // Увеличено на 20%
-  const PRICE_TERRACE = 150000;
+  const PRICE_TERRACE = 105000; // Уменьшено на 30%
   const PRICE_FENCE = 50000;
   const PRICE_COMMUNICATIONS = 2500000;
   const PRICE_LANDSCAPING = 15000; // Уменьшено в 2 раза
@@ -238,7 +238,7 @@ export const generateConstructionEstimate = async (house: HouseState): Promise<s
       <td style="text-align: right;">${formatCurrency(costFence)}</td>
     </tr>
     <tr>
-      <td>Инженерные коммуникации</td>
+      <td>Подключение к инженерным коммуникациям</td>
       <td>1 компл.</td>
       <td style="text-align: right;">${formatCurrency(costCommunications)}</td>
     </tr>

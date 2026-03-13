@@ -851,7 +851,7 @@ const Scene: React.FC<SceneProps> = (props) => {
       </Canvas>
       
       {/* Camera View Controls */}
-      <div className="absolute top-24 right-4 lg:right-[620px] z-10 flex flex-col gap-2 pointer-events-auto">
+      <div className="absolute top-48 right-4 lg:right-[620px] z-10 flex flex-col gap-2 pointer-events-auto">
         <button 
           onClick={(e) => {
             e.stopPropagation();

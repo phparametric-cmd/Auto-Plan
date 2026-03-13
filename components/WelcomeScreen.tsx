@@ -73,6 +73,8 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onStart, existingData, on
     }
   };
 
+  const [authUrl, setAuthUrl] = useState<string>('');
+
   useEffect(() => {
     try {
       const storedUser = localStorage.getItem('ph_user_info');
@@ -92,29 +94,35 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onStart, existingData, on
       }
     };
     window.addEventListener('message', handleMessage);
+
+    const redirectUri = `${window.location.origin}/auth/callback`;
+    fetch(`/api/auth/url?redirectUri=${encodeURIComponent(redirectUri)}`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.url) setAuthUrl(data.url);
+      })
+      .catch(err => console.error('Failed to prefetch auth URL:', err));
+
     return () => window.removeEventListener('message', handleMessage);
   }, []);
 
-  const handleGoogleLogin = async () => {
+  const handleGoogleLogin = () => {
+    if (!authUrl) {
+      alert('URL для авторизации еще загружается. Пожалуйста, подождите секунду и попробуйте снова.');
+      return;
+    }
+
     try {
-      // Открываем окно синхронно, чтобы браузер не заблокировал всплывающее окно
-      const authWindow = window.open('', 'oauth_popup', 'width=600,height=700');
+      // Открываем окно синхронно с уже готовым URL
+      const authWindow = window.open(authUrl, '_blank', 'width=600,height=700');
       
       if (!authWindow) {
-        alert('Пожалуйста, разрешите всплывающие окна для входа.');
-        return;
+        // Если окно заблокировано, перенаправляем текущее окно
+        window.location.href = authUrl;
       }
-
-      const redirectUri = `${window.location.origin}/auth/callback`;
-      const response = await fetch(`/api/auth/url?redirectUri=${encodeURIComponent(redirectUri)}`);
-      if (!response.ok) throw new Error('Failed to get auth URL');
-      const { url } = await response.json();
-      
-      // Перенаправляем открытое окно на URL авторизации
-      authWindow.location.href = url;
-    } catch (error) {
+    } catch (error: any) {
       console.error('OAuth error:', error);
-      alert('Ошибка при попытке авторизации. Проверьте консоль.');
+      alert(`Ошибка при попытке авторизации: ${error.message || error}`);
     }
   };
 

@@ -1105,14 +1105,14 @@ const Controls: React.FC<ControlsProps> = ({
                            <td className="py-4 text-slate-600">Проектирование доп. построек</td>
                            <td className="py-4 text-slate-400">{Math.round(totalBuildingsArea - totalArea)} м²</td>
                            <td className="py-4 text-right font-bold text-slate-900">
-                              {(Math.round(totalBuildingsArea - totalArea) * 1000).toLocaleString()} ₸
+                              {(Math.round(totalBuildingsArea - totalArea) * 2000).toLocaleString()} ₸
                            </td>
                         </tr>
                         <tr className="border-b border-slate-50">
                            <td className="py-4 text-slate-600">Посадка объектов на участок</td>
                            <td className="py-4 text-slate-400">{plotSotka} сот.</td>
                            <td className="py-4 text-right font-bold text-slate-900">
-                              {(Math.round(plotSotkaValue * 20000)).toLocaleString()} ₸
+                              {(Math.round(plotSotkaValue * 40000)).toLocaleString()} ₸
                            </td>
                         </tr>
                         <tr className="bg-slate-50/50">
@@ -1121,13 +1121,13 @@ const Controls: React.FC<ControlsProps> = ({
                               {(() => {
                                  const houseArea = Math.round(totalArea);
                                  const additionalObjectsArea = Math.round(totalBuildingsArea - totalArea);
-                                 const sitingCost = Math.round(plotSotkaValue * 20000);
+                                 const sitingCost = Math.round(plotSotkaValue * 40000);
                                  let houseBasePrice = 0;
                                  if (houseArea <= 250) houseBasePrice = 1000000;
                                  else if (houseArea <= 450) houseBasePrice = 1750000;
                                  else if (houseArea <= 700) houseBasePrice = 2850000;
                                  else houseBasePrice = houseArea * 4000;
-                                 const additionalObjectsPrice = additionalObjectsArea * 1000;
+                                 const additionalObjectsPrice = additionalObjectsArea * 2000;
                                  return (houseBasePrice + additionalObjectsPrice + sitingCost).toLocaleString();
                               })()} ₸
                            </td>

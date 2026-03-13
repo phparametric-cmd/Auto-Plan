@@ -74,6 +74,16 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onStart, existingData, on
   };
 
   useEffect(() => {
+    try {
+      const storedUser = localStorage.getItem('ph_user_info');
+      if (storedUser) {
+        const user = JSON.parse(storedUser);
+        if (user.name) setUserName(user.name);
+        if (user.email) setUserEmail(user.email);
+        localStorage.removeItem('ph_user_info');
+      }
+    } catch (e) {}
+
     const handleMessage = (event: MessageEvent) => {
       if (event.data?.type === 'OAUTH_AUTH_SUCCESS' && event.data?.user) {
         const user = event.data.user;
@@ -87,22 +97,24 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onStart, existingData, on
 
   const handleGoogleLogin = async () => {
     try {
+      // Открываем окно синхронно, чтобы браузер не заблокировал всплывающее окно
+      const authWindow = window.open('', 'oauth_popup', 'width=600,height=700');
+      
+      if (!authWindow) {
+        alert('Пожалуйста, разрешите всплывающие окна для входа.');
+        return;
+      }
+
       const redirectUri = `${window.location.origin}/auth/callback`;
       const response = await fetch(`/api/auth/url?redirectUri=${encodeURIComponent(redirectUri)}`);
       if (!response.ok) throw new Error('Failed to get auth URL');
       const { url } = await response.json();
       
-      const authWindow = window.open(
-        url,
-        'oauth_popup',
-        'width=600,height=700'
-      );
-
-      if (!authWindow) {
-        alert('Пожалуйста, разрешите всплывающие окна для входа.');
-      }
+      // Перенаправляем открытое окно на URL авторизации
+      authWindow.location.href = url;
     } catch (error) {
       console.error('OAuth error:', error);
+      alert('Ошибка при попытке авторизации. Проверьте консоль.');
     }
   };
 

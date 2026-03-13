@@ -313,8 +313,13 @@ async function startServer() {
           <html>
             <body>
               <script>
+                const userInfo = ${JSON.stringify(userInfo)};
+                try {
+                  localStorage.setItem('ph_user_info', JSON.stringify(userInfo));
+                } catch (e) {}
+                
                 if (window.opener) {
-                  window.opener.postMessage({ type: 'OAUTH_AUTH_SUCCESS', user: ${JSON.stringify(userInfo)} }, '*');
+                  window.opener.postMessage({ type: 'OAUTH_AUTH_SUCCESS', user: userInfo }, '*');
                   window.close();
                 } else {
                   window.location.href = '/';
@@ -329,18 +334,20 @@ async function startServer() {
           <html>
             <body>
               <p>Ошибка авторизации. Закройте окно и попробуйте снова.</p>
-              <script>setTimeout(() => window.close(), 3000);</script>
+              <p style="color: gray; font-size: 12px;">Детали: code=${!!code}, clientId=${!!process.env.CLIENT_ID}, clientSecret=${!!process.env.CLIENT_SECRET}</p>
+              <script>setTimeout(() => window.close(), 5000);</script>
             </body>
           </html>
         `);
       }
-    } catch (error) {
-      console.error("OAuth error:", error);
+    } catch (error: any) {
+      console.error("OAuth error:", error.response?.data || error.message);
       res.send(`
         <html>
           <body>
             <p>Ошибка авторизации. Закройте окно и попробуйте снова.</p>
-            <script>setTimeout(() => window.close(), 3000);</script>
+            <p style="color: gray; font-size: 12px;">Детали: ${error.response?.data?.error_description || error.message}</p>
+            <script>setTimeout(() => window.close(), 5000);</script>
           </body>
         </html>
       `);

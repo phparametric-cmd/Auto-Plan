@@ -108,6 +108,8 @@ const ObjectSettingsOverlay = ({ id, house, setHouse, onClose, t, isXFlashing }:
     setHouse((prev: any) => ({ ...prev, ...updates }));
   };
 
+  const isSmallPlot = house.plotWidth < 20 || house.plotLength < 20;
+
   let label = "";
   let width = 0;
   let depth = 0;
@@ -388,12 +390,10 @@ const NorthArrow = ({ corners }: { corners: PlotCorners }) => {
   );
 };
 
-const SceneContent = ({ house, setHouse, showHouse, currentStep, selectedObjectId, onSelectObject, activeSettingId, setActiveSettingId, onTriggerXFlash, isXFlashing }: any) => {
+const SceneContent = ({ house, setHouse, showHouse, currentStep, selectedObjectId, onSelectObject, activeSettingId, setActiveSettingId, onTriggerXFlash, isXFlashing, cameraControlsRef }: any) => {
   const { camera, raycaster } = useThree();
   const t = getTranslation(house.lang);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
-
-  const cameraControlsRef = useRef<any>(null);
 
   useEffect(() => {
     if (!cameraControlsRef.current) return;
@@ -669,18 +669,18 @@ const SceneContent = ({ house, setHouse, showHouse, currentStep, selectedObjectI
         enabled={!draggingItem && !(resizingCorner || draggingGate)} 
         minDistance={10} 
         maxDistance={600} 
-        maxPolarAngle={currentStep === 0 ? 0 : Math.PI / 2.1} 
-        minPolarAngle={currentStep === 0 ? 0 : 0}
-        maxAzimuthAngle={currentStep === 0 ? 0 : Infinity}
-        minAzimuthAngle={currentStep === 0 ? 0 : -Infinity}
+        maxPolarAngle={Math.PI / 2.1} 
+        minPolarAngle={0}
+        maxAzimuthAngle={Infinity}
+        minAzimuthAngle={-Infinity}
         mouseButtons={{
-          left: currentStep === 0 ? 2 : 1,
+          left: 1,
           middle: 8,
           right: 2,
           wheel: 8,
         }}
         touches={{
-          one: currentStep === 0 ? 64 : 32,
+          one: 32,
           two: 1024,
           three: 64,
         }}
@@ -717,7 +717,7 @@ const SceneContent = ({ house, setHouse, showHouse, currentStep, selectedObjectI
           if (newState.hasCarport) {
             const cW = getCarportWidth(newState.carportCars, newState.plotWidth < 20 || newState.plotLength < 20);
             const cD = (newState.plotWidth < 20 || newState.plotLength < 20) ? 3.0 : 6.0;
-            const { x, z, rotation } = getGatePositionAndRotation(newState, cW, cD);
+            const { x, z, rotation } = getGatePositionAndRotation(newState, cW, cD, true);
             newState.carportPosX = x;
             newState.carportPosZ = z;
             newState.carportRotation = rotation;
@@ -793,6 +793,7 @@ const SceneContent = ({ house, setHouse, showHouse, currentStep, selectedObjectI
 const Scene: React.FC<SceneProps> = (props) => {
   const [activeSettingId, setActiveSettingId] = useState<string | null>(null);
   const [isXFlashing, setIsXFlashing] = useState(false);
+  const cameraControlsRef = useRef<any>(null);
   const t = getTranslation(props.house.lang);
 
   const triggerXFlash = () => {
@@ -845,9 +846,40 @@ const Scene: React.FC<SceneProps> = (props) => {
           shadow-camera-far={200}
         />
         <Suspense fallback={null}>
-          <SceneContent {...props} activeSettingId={activeSettingId} setActiveSettingId={setActiveSettingId} onTriggerXFlash={triggerXFlash} isXFlashing={isXFlashing} />
+          <SceneContent {...props} activeSettingId={activeSettingId} setActiveSettingId={setActiveSettingId} onTriggerXFlash={triggerXFlash} isXFlashing={isXFlashing} cameraControlsRef={cameraControlsRef} />
         </Suspense>
       </Canvas>
+      
+      {/* Camera View Controls */}
+      <div className="absolute top-24 right-4 lg:right-[620px] z-10 flex flex-col gap-2 pointer-events-auto">
+        <button 
+          onClick={(e) => {
+            e.stopPropagation();
+            if (cameraControlsRef.current) {
+              const plotSize = Math.max(props.house.plotWidth, props.house.plotLength);
+              cameraControlsRef.current.setLookAt(plotSize * 1.2 + 20, plotSize * 1.2 + 20, plotSize * 1.2 + 20, 0, 0, 0, true);
+            }
+          }}
+          className="w-8 h-8 bg-white/90 backdrop-blur rounded-lg shadow-sm flex items-center justify-center text-slate-600 hover:text-[#ff5f1f] hover:bg-white transition-all border border-slate-200"
+          title="3D Вид"
+        >
+          <i className="fas fa-cube text-sm"></i>
+        </button>
+        <button 
+          onClick={(e) => {
+            e.stopPropagation();
+            if (cameraControlsRef.current) {
+              const plotSize = Math.max(props.house.plotWidth, props.house.plotLength);
+              cameraControlsRef.current.setLookAt(0, plotSize * 1.5 + 40, 0, 0, 0, 0, true);
+            }
+          }}
+          className="w-8 h-8 bg-white/90 backdrop-blur rounded-lg shadow-sm flex items-center justify-center text-slate-600 hover:text-[#ff5f1f] hover:bg-white transition-all border border-slate-200"
+          title="Вид сверху (План)"
+        >
+          <i className="fas fa-map text-sm"></i>
+        </button>
+      </div>
+
       <ObjectSettingsOverlay 
         id={activeSettingId} 
         house={props.house} 

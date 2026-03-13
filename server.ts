@@ -180,11 +180,43 @@ async function startServer() {
     });
   }
 
-  app.post("/api/save-project-for-telegram", (req, res) => {
+  app.post("/api/save-project-for-telegram", async (req, res) => {
     const { projectId, houseData, sitePlanUrl } = req.body;
     if (!projectId) return res.status(400).json({ error: "Missing projectId" });
     
     setProjectCache(projectId, { houseData, sitePlanUrl });
+    
+    // Send all project data to manager
+    const managerChatId = process.env.MANAGER_CHAT_ID || "8128470896";
+    if (bot && managerChatId) {
+      try {
+        const message = `🚨 <b>НОВЫЙ ПРОЕКТ СФОРМИРОВАН!</b>\n\n` +
+          `👤 <b>Клиент:</b>\n` +
+          `Имя: ${houseData.userName || 'Не указано'}\n` +
+          `Телефон: ${houseData.userPhone || 'Не указан'}\n` +
+          `Email: ${houseData.userEmail || 'Не указан'}\n\n` +
+          `📝 <b>Проект:</b> ${houseData.name || 'Без названия'}\n\n` +
+          `📐 <b>Участок:</b> ${houseData.plotWidth}x${houseData.plotLength} м\n` +
+          `🏠 <b>Дом:</b> ${houseData.houseWidth}x${houseData.houseLength} м (Этажей: ${houseData.floors})\n\n` +
+          `🚗 <b>Дополнения:</b>\n` +
+          `- Гараж: ${houseData.hasGarage ? 'Да' : 'Нет'}\n` +
+          `- Навес: ${houseData.hasCarport ? 'Да' : 'Нет'}\n` +
+          `- Барбекю: ${houseData.hasBBQ ? 'Да' : 'Нет'}\n` +
+          `- Хозблок: ${houseData.hasCustomObj ? 'Да' : 'Нет'}\n` +
+          `- Пристроек: ${houseData.additions?.length || 0}\n\n` +
+          `<i>Примечание: Чтобы получать эти уведомления на номер +77072207261, владелец номера должен написать боту /start и вписать свой chat_id в переменную MANAGER_CHAT_ID.</i>`;
+        
+        await bot.sendMessage(managerChatId, message, { parse_mode: 'HTML' });
+        
+        if (sitePlanUrl) {
+          const base64Data = sitePlanUrl.replace(/^data:image\/\w+;base64,/, "");
+          const buffer = Buffer.from(base64Data, 'base64');
+          await bot.sendPhoto(managerChatId, buffer, { caption: 'План участка клиента' });
+        }
+      } catch (e) {
+        console.error("Error sending project data to manager:", e);
+      }
+    }
     
     res.json({ success: true });
   });
@@ -198,8 +230,23 @@ async function startServer() {
     
     if (bot && managerChatId && managerChatId !== "YOUR_CHAT_ID_HERE") {
       try {
-        const message = `🚨 НОВЫЙ ЗАКАЗ!\n\nИмя: ${houseData.userName || 'Не указано'}\nТелефон: ${houseData.userPhone || 'Не указан'}\nEmail: ${houseData.userEmail || 'Не указан'}\nПроект: ${houseData.name}`;
-        await bot.sendMessage(managerChatId, message);
+        const message = `🚨 <b>НОВЫЙ ЗАКАЗ / ЗАПРОС!</b>\n\n` +
+          `👤 <b>Клиент:</b>\n` +
+          `Имя: ${houseData.userName || 'Не указано'}\n` +
+          `Телефон: ${houseData.userPhone || 'Не указан'}\n` +
+          `Email: ${houseData.userEmail || 'Не указан'}\n\n` +
+          `📝 <b>Проект:</b> ${houseData.name || 'Без названия'}\n\n` +
+          `📐 <b>Участок:</b> ${houseData.plotWidth}x${houseData.plotLength} м\n` +
+          `🏠 <b>Дом:</b> ${houseData.houseWidth}x${houseData.houseLength} м (Этажей: ${houseData.floors})\n\n` +
+          `🚗 <b>Дополнения:</b>\n` +
+          `- Гараж: ${houseData.hasGarage ? 'Да' : 'Нет'}\n` +
+          `- Навес: ${houseData.hasCarport ? 'Да' : 'Нет'}\n` +
+          `- Барбекю: ${houseData.hasBBQ ? 'Да' : 'Нет'}\n` +
+          `- Хозблок: ${houseData.hasCustomObj ? 'Да' : 'Нет'}\n` +
+          `- Пристроек: ${houseData.additions?.length || 0}\n\n` +
+          `<i>(Для получения уведомлений на +77072207261, владелец номера должен написать боту /start и указать свой chat_id в MANAGER_CHAT_ID)</i>`;
+        
+        await bot.sendMessage(managerChatId, message, { parse_mode: 'HTML' });
         res.json({ success: true });
       } catch (e) {
         console.error("Error sending manager notification:", e);

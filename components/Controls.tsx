@@ -1254,7 +1254,7 @@ const Controls: React.FC<ControlsProps> = ({
                         if (p.hasCarport) {
                           const cW = getCarportWidth(p.carportCars, isSmallPlot);
                           const cD = isSmallPlot ? 3.0 : 6.0;
-                          const { x, z, rotation } = getGatePositionAndRotation(newState, cW, cD);
+                          const { x, z, rotation } = getGatePositionAndRotation(newState, cW, cD, true);
                           newState.carportPosX = x;
                           newState.carportPosZ = z;
                           newState.carportRotation = rotation;
@@ -1282,7 +1282,7 @@ const Controls: React.FC<ControlsProps> = ({
                         if (p.hasCarport) {
                           const cW = getCarportWidth(p.carportCars, isSmallPlot);
                           const cD = isSmallPlot ? 3.0 : 6.0;
-                          const { x, z, rotation } = getGatePositionAndRotation(newState, cW, cD);
+                          const { x, z, rotation } = getGatePositionAndRotation(newState, cW, cD, true);
                           newState.carportPosX = x;
                           newState.carportPosZ = z;
                           newState.carportRotation = rotation;
@@ -1549,7 +1549,7 @@ const Controls: React.FC<ControlsProps> = ({
                   if (!v) return { ...p, hasCarport: false };
                   const cW = getCarportWidth(p.carportCars, isSmallPlot);
                   const cD = isSmallPlot ? 3.0 : 6.0;
-                  const { x, z, rotation } = getGatePositionAndRotation(p, cW, cD);
+                  const { x, z, rotation } = getGatePositionAndRotation(p, cW, cD, true);
                   return { ...p, hasCarport: true, carportPosX: x, carportPosZ: z, carportRotation: rotation };
                 })}>
                   <div className="flex gap-1.5 lg:gap-2 mb-2 lg:mb-4">

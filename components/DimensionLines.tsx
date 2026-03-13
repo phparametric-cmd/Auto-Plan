@@ -42,7 +42,7 @@ const TextLabel = ({ text, color = "#0f172a" }: { text: string, color?: string }
     <Billboard>
       <mesh>
         <planeGeometry args={[10, 2.5]} />
-        <meshBasicMaterial map={texture} transparent alphaTest={0.1} depthWrite={false} />
+        <meshBasicMaterial map={texture} transparent alphaTest={0.1} depthWrite={false} depthTest={false} />
       </mesh>
     </Billboard>
   );
@@ -74,26 +74,26 @@ const DimensionLine: React.FC<DimensionLineProps> = ({ start, end, label, color 
     <group>
       {/* Main dimension line segment */}
       <lineSegments geometry={lineGeometry}>
-        <lineBasicMaterial attach="material" color={color} transparent opacity={0.6} />
+        <lineBasicMaterial attach="material" color={color} transparent opacity={0.6} depthTest={false} />
       </lineSegments>
       
       {/* Tick lines for dimension start and end */}
       <lineSegments geometry={tickStartGeom}>
-        <lineBasicMaterial attach="material" color={color} transparent opacity={0.3} />
+        <lineBasicMaterial attach="material" color={color} transparent opacity={0.3} depthTest={false} />
       </lineSegments>
       <lineSegments geometry={tickEndGeom}>
-        <lineBasicMaterial attach="material" color={color} transparent opacity={0.3} />
+        <lineBasicMaterial attach="material" color={color} transparent opacity={0.3} depthTest={false} />
       </lineSegments>
 
       {/* Dimension arrow markers */}
       <mesh position={[dimStart.x, dimStart.y, dimStart.z]} rotation={[0, -Math.atan2(direction.z, direction.x), Math.PI / 4]}>
         <boxGeometry args={[0.04, 2.0, 0.04]} />
-        <meshBasicMaterial color={color} transparent opacity={0.9} />
+        <meshBasicMaterial color={color} transparent opacity={0.9} depthTest={false} />
       </mesh>
       
       <mesh position={[dimEnd.x, dimEnd.y, dimEnd.z]} rotation={[0, -Math.atan2(direction.z, direction.x), Math.PI / 4]}>
         <boxGeometry args={[0.04, 2.0, 0.04]} />
-        <meshBasicMaterial color={color} transparent opacity={0.9} />
+        <meshBasicMaterial color={color} transparent opacity={0.9} depthTest={false} />
       </mesh>
 
       {/* Numeric value label billboard */}

@@ -44,13 +44,16 @@ export const applyZoneRules = (house: HouseState): HouseState => {
   let carportWidth = (house.carportCars === 1 ? 4 : (house.carportCars === 2 ? 7 : 10)) * (isSmallPlot ? 0.5 : 1);
   let carportDepth = isSmallPlot ? 3 : 6;
 
+  let gateWidth = 4; // Approximate gate width
   let garageZ = frontZ - garageDepth / 2 - gap;
-  let garageX = gX + 3 + garageWidth / 2;
-  if (garageX + garageWidth/2 > rightX) garageX = gX - 3 - garageWidth/2;
+  let garageX = gX + gateWidth / 2 + garageWidth / 2 + gap;
   
   let carportZ = frontZ - carportDepth / 2 - gap;
-  let carportX = gX - 3 - carportWidth / 2;
-  if (carportX - carportWidth/2 < leftX) carportX = gX + 3 + carportWidth/2;
+  let carportX = gX - gateWidth / 2 - carportWidth / 2 - gap;
+
+  // Ensure they don't go out of plot bounds
+  garageX = Math.min(rightX - garageWidth / 2 - gap, garageX);
+  carportX = Math.max(leftX + carportWidth / 2 + gap, carportX);
 
   if (house.hasGarage && house.hasCarport) {
     if (Math.abs(garageX - carportX) < (garageWidth + carportWidth) / 2) {

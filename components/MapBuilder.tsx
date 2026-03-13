@@ -101,9 +101,16 @@ const MapBuilder: React.FC<MapBuilderProps> = ({ house, onConfirm, onCancel }) =
       allowSelfIntersection: false,
       draggable: true,
       snappable: true,
-      snapDistance: 20,
+      snapDistance: 30,
       allowEditing: true,
       allowRemoval: true,
+      markerStyle: {
+        radius: 10,
+        weight: 15,
+        color: 'rgba(255, 95, 31, 0.3)',
+        fillColor: '#ff5f1f',
+        fillOpacity: 1
+      }
     });
   }, []);
 
@@ -192,6 +199,16 @@ const MapBuilder: React.FC<MapBuilderProps> = ({ house, onConfirm, onCancel }) =
       allowSelfIntersection: false,
       draggable: true,
       snappable: true,
+      snapDistance: 30,
+      allowEditing: true,
+      allowRemoval: true,
+      markerStyle: {
+        radius: 10,
+        weight: 15,
+        color: 'rgba(255, 95, 31, 0.3)',
+        fillColor: '#ff5f1f',
+        fillOpacity: 1
+      }
     });
 
     poly.on('pm:edit pm:dragend pm:vertexadded pm:vertexremoved pm:markerdragend pm:markerdrag', () => {

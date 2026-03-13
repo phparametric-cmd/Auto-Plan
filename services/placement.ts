@@ -1,6 +1,6 @@
 import { HouseState } from '../types';
 
-export const getGatePositionAndRotation = (house: HouseState, objWidth: number, objDepth: number) => {
+export const getGatePositionAndRotation = (house: HouseState, objWidth: number, objDepth: number, isLeft: boolean = false) => {
   const vertices = house.plotCorners?.vertices || [];
   if (vertices.length < 3) return { x: 0, z: 0, rotation: 0 };
   
@@ -16,10 +16,19 @@ export const getGatePositionAndRotation = (house: HouseState, objWidth: number, 
   const inwardAngle = edgeAngle + Math.PI / 2;
   
   const inwardDist = objDepth / 2 + 1;
-  const edgeDist = 2.5 + objWidth / 2 + 0.5;
+  const gateWidth = 4; // Approximate gate width
   
-  let x = gx + Math.cos(inwardAngle) * inwardDist + Math.cos(edgeAngle) * edgeDist;
-  let z = gz + Math.sin(inwardAngle) * inwardDist + Math.sin(edgeAngle) * edgeDist;
+  // Place near the gate on opposite sides
+  let x, z;
+  if (isLeft) {
+    // Place to the left of the gate
+    x = gx + Math.cos(inwardAngle) * inwardDist - Math.cos(edgeAngle) * (gateWidth / 2 + objWidth / 2 + 1);
+    z = gz + Math.sin(inwardAngle) * inwardDist - Math.sin(edgeAngle) * (gateWidth / 2 + objWidth / 2 + 1);
+  } else {
+    // Place to the right of the gate
+    x = gx + Math.cos(inwardAngle) * inwardDist + Math.cos(edgeAngle) * (gateWidth / 2 + objWidth / 2 + 1);
+    z = gz + Math.sin(inwardAngle) * inwardDist + Math.sin(edgeAngle) * (gateWidth / 2 + objWidth / 2 + 1);
+  }
   
   // Clamp to plot bounds roughly
   let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;

@@ -121,7 +121,7 @@ const Controls: React.FC<ControlsProps> = ({
   const [previewPdfUrl, setPreviewPdfUrl] = useState<string | null>(null);
   const [previewPdfName, setPreviewPdfName] = useState<string>("");
   const [previewPdfBlob, setPreviewPdfBlob] = useState<Blob | null>(null);
-  const [previewPdfZoom, setPreviewPdfZoom] = useState<number>(1);
+  const [previewPdfZoom, setPreviewPdfZoom] = useState<number>(0.5);
   const pdfContainerRef = useRef<HTMLDivElement>(null);
   const [isPdfDragging, setIsPdfDragging] = useState(false);
   const [pdfDragStart, setPdfDragStart] = useState({ x: 0, y: 0 });
@@ -513,7 +513,7 @@ const Controls: React.FC<ControlsProps> = ({
       const { blob: passportBlob, imgData } = await generatePDFBlob(el, `Passport_${house.name}`);
       setPreviewPdfBlob(passportBlob);
       setPreviewPdfName(`Passport_${house.name}.pdf`);
-      setPreviewPdfZoom(1);
+      setPreviewPdfZoom(0.5);
       setPreviewPdfUrl(imgData);
     } catch (e) { console.error(e); } finally { setIsDownloadingPassport(false); }
   };
@@ -526,7 +526,7 @@ const Controls: React.FC<ControlsProps> = ({
       const { blob: calculationBlob, imgData } = await generatePDFBlob(el, `Calculation_${house.name}`);
       setPreviewPdfBlob(calculationBlob);
       setPreviewPdfName(`Calculation_${house.name}.pdf`);
-      setPreviewPdfZoom(1);
+      setPreviewPdfZoom(0.5);
       setPreviewPdfUrl(imgData);
     } catch (e) { console.error(e); } finally { setIsDownloadingCalc(false); }
   };
@@ -549,7 +549,7 @@ const Controls: React.FC<ControlsProps> = ({
       const { blob: estimateBlob, imgData } = await generatePDFBlob(el, `Estimate_${house.name}`);
       setPreviewPdfBlob(estimateBlob);
       setPreviewPdfName(`Estimate_${house.name}.pdf`);
-      setPreviewPdfZoom(1);
+      setPreviewPdfZoom(0.5);
       setPreviewPdfUrl(imgData);
     } catch (e) { 
       console.error(e); 
@@ -1757,7 +1757,7 @@ const Controls: React.FC<ControlsProps> = ({
                   setPreviewPdfUrl(null);
                   setPreviewPdfBlob(null);
                   setPreviewPdfName("");
-                  setPreviewPdfZoom(1);
+                  setPreviewPdfZoom(0.5);
                 }}
                 className="w-10 h-10 flex items-center justify-center rounded-full bg-slate-200 hover:bg-slate-300 text-slate-600 transition-colors"
               >

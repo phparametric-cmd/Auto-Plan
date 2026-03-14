@@ -679,11 +679,6 @@ const SceneContent = ({ house, setHouse, showHouse, currentStep, selectedObjectI
           right: 2,
           wheel: 8,
         }}
-        touches={{
-          one: 32,
-          two: 1024,
-          three: 64,
-        }}
         makeDefault 
       />
       

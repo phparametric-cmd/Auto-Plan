@@ -115,17 +115,6 @@ export const processProjectOrder = async ({ house, passportBlob, calculationBlob
     // Отправляем на почту
     await sendProjectToEmail(house, 0, zipBlob, revisionCount);
 
-    // Уведомляем менеджера в Telegram
-    try {
-      await fetch('/api/notify-manager', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ houseData: house })
-      });
-    } catch (e) {
-      console.error("Failed to notify manager", e);
-    }
-
     return true;
   } catch (error) {
     console.error("[OrderService] Error:", error);

@@ -131,19 +131,8 @@ const Controls: React.FC<ControlsProps> = ({
     setHasUnsavedChanges(true);
   }, [house]);
 
-  const isSmallPlot = useMemo(() => {
-    const corners = house.plotCorners || { nw: { x: -house.plotWidth/2, z: -house.plotLength/2 }, ne: { x: house.plotWidth/2, z: -house.plotLength/2 }, se: { x: house.plotWidth/2, z: house.plotLength/2 }, sw: { x: -house.plotWidth/2, z: house.plotLength/2 } };
-    const v = corners.vertices || [corners.nw, corners.ne, corners.se, corners.sw];
-    if (v.length < 3) return false;
-    let area = 0;
-    for (let i = 0; i < v.length; i++) {
-      const j = (i + 1) % v.length;
-      area += v[i].x * v[j].z;
-      area -= v[j].x * v[i].z;
-    }
-    return Math.abs(area) / 200 < 7;
-  }, [house.plotCorners, house.plotWidth, house.plotLength]);
-  const scaleFactor = isSmallPlot ? 0.666 : 1;
+  const isSmallPlot = false;
+  const scaleFactor = 1;
 
   const isHouseOutOfBounds = useMemo(() => {
     const corners = house.plotCorners || { nw: { x: -house.plotWidth/2, z: -house.plotLength/2 }, ne: { x: house.plotWidth/2, z: -house.plotLength/2 }, se: { x: house.plotWidth/2, z: house.plotLength/2 }, sw: { x: -house.plotWidth/2, z: house.plotLength/2 } };
@@ -1462,7 +1451,7 @@ const Controls: React.FC<ControlsProps> = ({
                   const tW = 6 * scaleFactor;
                   const tD = 5 * scaleFactor;
                   const houseRot = p.houseRotation || 0;
-                  const offset = p.houseLength / 2 + tD / 2;
+                  const offset = -(p.houseLength / 2 + tD / 2);
                   const x = p.housePosX + Math.sin(houseRot) * offset;
                   const z = p.housePosZ + Math.cos(houseRot) * offset;
                   return { ...p, hasTerrace: true, terraceWidth: tW, terraceDepth: tD, terracePosX: x, terracePosZ: z, terraceRotation: houseRot };
@@ -1725,7 +1714,7 @@ const Controls: React.FC<ControlsProps> = ({
 
       {/* PDF Preview Modal */}
       {previewPdfUrl && (
-        <div className="fixed inset-0 z-[10000] flex flex-col bg-slate-100 overflow-hidden">
+        <div className="fixed inset-0 z-[10000] flex flex-col bg-slate-100 overflow-hidden" style={{ overscrollBehavior: 'none' }}>
           <div className="flex items-center justify-between p-4 border-b bg-white shadow-sm shrink-0">
             <h3 className="font-bold text-lg text-slate-800">{previewPdfName}</h3>
             <div className="flex items-center gap-2 lg:gap-3">
@@ -1768,6 +1757,7 @@ const Controls: React.FC<ControlsProps> = ({
           <div 
             ref={pdfContainerRef}
             className={`flex-1 overflow-auto p-4 lg:p-8 relative ${isPdfDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
+            style={{ touchAction: 'pinch-zoom' }}
             onPointerDown={(e) => {
               setIsPdfDragging(true);
               setPdfDragStart({ x: e.clientX, y: e.clientY });

@@ -187,7 +187,7 @@ const Controls: React.FC<ControlsProps> = ({
 
   const handleGoogleSignIn = async () => {
     try {
-      const response = await fetch('/api/auth/url?redirectUri=' + encodeURIComponent(window.location.origin + '/auth/callback'));
+      const response = await fetch('/api/auth/url?redirectUri=' + encodeURIComponent(window.location.origin + '/api/auth/callback'));
       if (!response.ok) throw new Error('Failed to get auth URL');
       const { url } = await response.json();
 

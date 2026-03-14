@@ -95,7 +95,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onStart, existingData, on
     };
     window.addEventListener('message', handleMessage);
 
-    const redirectUri = `${window.location.origin}/auth/callback`;
+    const redirectUri = `${window.location.origin}/api/auth/callback`;
     fetch(`/api/auth/url?redirectUri=${encodeURIComponent(redirectUri)}`)
       .then(res => res.json())
       .then(data => {

@@ -5,6 +5,7 @@ import Controls from './components/Controls';
 import WelcomeScreen from './components/WelcomeScreen';
 import Assistant from './components/Assistant';
 import MapBuilder from './components/MapBuilder';
+import ProjectsModal from './components/ProjectsModal';
 import { HouseState, Language, Point2D, PlotCorners } from './types';
 import { getTranslation } from './services/i18n';
 
@@ -142,6 +143,7 @@ const App: React.FC = () => {
   const [customAssistantMsg, setCustomAssistantMsg] = useState<{ title: string, text: string } | undefined>(undefined);
   const [selectedObjectId, setSelectedObjectId] = useState<string | null>(null);
   const [isIdle, setIsIdle] = useState(false);
+  const [isProjectsModalOpen, setIsProjectsModalOpen] = useState(false);
   
   const captureRef = useRef<((mode?: 'current' | 'top') => string) | null>(null);
   const idleTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -234,6 +236,27 @@ const App: React.FC = () => {
 
   return (
     <div className="relative w-full h-screen bg-white overflow-hidden">
+      {/* Global Projects Button */}
+      <button 
+        onClick={() => setIsProjectsModalOpen(true)}
+        className={`absolute z-50 bg-white/90 backdrop-blur-sm border shadow-sm hover:shadow-md px-4 py-2 rounded-xl font-bold text-sm flex items-center gap-2 transition-all text-slate-700 hover:text-blue-600 ${
+          hasStarted ? 'top-4 right-4 lg:right-[620px] lg:top-6' : 'top-4 right-4 lg:top-6 lg:right-6'
+        }`}
+      >
+        <i className="fas fa-folder-open"></i>
+        {house.lang === 'ru' ? 'Мои проекты' : 'My Projects'}
+      </button>
+
+      <ProjectsModal 
+        isOpen={isProjectsModalOpen} 
+        onClose={() => setIsProjectsModalOpen(false)} 
+        currentHouse={house}
+        onLoadProject={(loadedHouse) => {
+          setHouse(loadedHouse);
+          setHasStarted(true);
+        }}
+      />
+
       {!hasStarted ? (
         <>
           <WelcomeScreen onStart={handleStart} existingData={house} onLangChange={changeLang} />

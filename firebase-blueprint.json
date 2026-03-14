@@ -1,0 +1,40 @@
+{
+  "entities": {
+    "Project": {
+      "title": "Project",
+      "description": "A saved house design project",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "description": "The user ID of the owner"
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the project"
+        },
+        "createdAt": {
+          "type": "timestamp",
+          "description": "When the project was created"
+        },
+        "updatedAt": {
+          "type": "timestamp",
+          "description": "When the project was last updated"
+        },
+        "houseData": {
+          "type": "string",
+          "description": "JSON stringified HouseState object"
+        }
+      },
+      "required": ["uid", "name", "createdAt", "updatedAt", "houseData"]
+    }
+  },
+  "firestore": {
+    "/projects/{projectId}": {
+      "schema": {
+        "$ref": "#/entities/Project"
+      },
+      "description": "User saved projects"
+    }
+  }
+}

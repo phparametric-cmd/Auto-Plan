@@ -14,7 +14,7 @@ declare const L: any;
 declare const GeoSearch: any;
 
 const MapBuilder: React.FC<MapBuilderProps> = ({ house, onConfirm, onCancel }) => {
-  const t = getTranslation(house.lang);
+  const t = getTranslation(house.lang).mapBuilder;
   const mapRef = useRef<HTMLDivElement>(null);
   const leafletInstance = useRef<any>(null);
   const polygonInstance = useRef<any>(null);
@@ -332,19 +332,19 @@ const MapBuilder: React.FC<MapBuilderProps> = ({ house, onConfirm, onCancel }) =
           </div>
           <input 
             type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Поиск адреса..." 
+            placeholder={t.searchAddress} 
             className="flex-1 bg-transparent border-none outline-none font-bold text-slate-900 text-sm py-1"
           />
         </form>
 
         {/* Plot Area Statistics Display - Size and fonts reduced 3x as requested */}
         <div className="bg-white/95 backdrop-blur-xl p-1.5 rounded-xl shadow-2xl border border-white/20 flex flex-col items-center animate-in fade-in slide-in-from-top-4 duration-500 w-fit mx-auto">
-          <div className="text-[6px] font-black text-slate-400 uppercase tracking-[0.1em] mb-0.5">ОБЩАЯ ПЛОЩАДЬ</div>
+          <div className="text-[6px] font-black text-slate-400 uppercase tracking-[0.1em] mb-0.5">{t.totalArea}</div>
           <div className="flex items-baseline gap-1">
             <span className="text-[10px] font-black text-slate-900">{(plotArea / 100).toFixed(1)}</span>
-            <span className="text-[6px] font-black text-[#ff5f1f] uppercase tracking-wider">СОТОК</span>
+            <span className="text-[6px] font-black text-[#ff5f1f] uppercase tracking-wider">{t.sot}</span>
           </div>
-          <div className="text-[7px] font-black text-slate-300 mt-0.5">{Math.round(plotArea)} <span className="text-[6px]">М²</span></div>
+          <div className="text-[7px] font-black text-slate-300 mt-0.5">{Math.round(plotArea)} <span className="text-[6px]">{t.sqm}</span></div>
         </div>
 
         {searchResults.length > 0 && (
@@ -383,13 +383,13 @@ const MapBuilder: React.FC<MapBuilderProps> = ({ house, onConfirm, onCancel }) =
         <div className="absolute bottom-24 left-1/2 -translate-x-1/2 z-[1006] w-[90%] max-w-md pointer-events-none">
           <div className="bg-slate-900/80 backdrop-blur-md p-3 rounded-2xl border border-white/10 shadow-2xl text-center">
             <p className="text-[10px] lg:text-xs font-medium text-white/90 leading-relaxed">
-              <span className="text-[#ff5f1f] font-bold">Подсказка:</span> Нажмите на кнопку прицела справа, чтобы сместить участок в центр экрана. Вы можете изменять форму участка, перетаскивая точки на углах и по середине жёлтых линий.
+              <span className="text-[#ff5f1f] font-bold">{t.hint}</span> {t.hintText}
             </p>
           </div>
         </div>
 
         <div className="absolute right-4 lg:right-6 top-1/2 -translate-y-1/2 z-[1006] flex flex-col gap-4">
-          <button onClick={handlePlaceAtCenter} title="Центрировать участок"
+          <button onClick={handlePlaceAtCenter} title={t.centerPlot}
             className="pointer-events-auto w-14 h-14 rounded-full bg-white text-[#ff5f1f] shadow-2xl flex items-center justify-center border border-slate-100 active:scale-90 transition-all hover:scale-110 animate-pulse-orange ring-2 ring-orange-100">
             <i className="fas fa-bullseye text-xl"></i>
           </button>
@@ -413,17 +413,17 @@ const MapBuilder: React.FC<MapBuilderProps> = ({ house, onConfirm, onCancel }) =
 
       <div className="absolute bottom-8 left-6 right-6 flex justify-between items-center pointer-events-none z-[1002]">
          <button onClick={onCancel} className="pointer-events-auto bg-white/95 backdrop-blur-xl text-slate-900 px-8 py-4 rounded-2xl font-black uppercase text-[11px] tracking-widest shadow-xl active:scale-95 transition-all hover:bg-slate-50">
-           Отмена
+           {t.cancel}
          </button>
          
          <div className="bg-slate-900/60 backdrop-blur-md px-6 py-3 rounded-full border border-white/10 text-white text-[10px] font-bold uppercase tracking-widest hidden lg:block">
-           <i className="fas fa-mouse-pointer text-[#ff5f1f] mr-2"></i> Тяните за края участка для изменения формы
+           <i className="fas fa-mouse-pointer text-[#ff5f1f] mr-2"></i> {t.dragEdges}
          </div>
          
          <button onClick={handleConfirm} disabled={isProcessing}
            className="pointer-events-auto bg-[#ff5f1f] text-white px-10 py-5 rounded-2xl font-black uppercase text-[13px] tracking-widest shadow-2xl active:scale-95 disabled:opacity-50 flex items-center gap-3 transition-all">
            {isProcessing ? <i className="fas fa-circle-notch fa-spin"></i> : <i className="fas fa-check"></i>}
-           Готово
+           {t.done}
          </button>
       </div>
     </div>

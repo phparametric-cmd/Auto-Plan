@@ -28,7 +28,7 @@ const getCarportWidth = (cars: number, isSmall: boolean = false) => (cars === 1 
 
 import { getGatePositionAndRotation, getSmartPosition } from '../services/placement';
 
-const Slider = ({ label, value, min, max, onChange, unit = "м", step = 0.1, isHighlighted = false }: any) => (
+const Slider = ({ label, value, min, max, onChange, unit = "", step = 0.1, isHighlighted = false }: any) => (
   <div className={`space-y-1 lg:space-y-2 p-0.5 lg:p-1 rounded-lg transition-all ${isHighlighted ? 'bg-orange-50/50' : ''}`}>
     <div className="flex justify-between items-end">
       <span className="text-[7px] lg:text-sm font-black text-slate-400 uppercase tracking-widest">{label}</span>
@@ -127,6 +127,51 @@ const Controls: React.FC<ControlsProps> = ({
   const [pdfDragStart, setPdfDragStart] = useState({ x: 0, y: 0 });
   const [pdfScrollStart, setPdfScrollStart] = useState({ left: 0, top: 0 });
 
+  const previewPdfZoomRef = useRef(previewPdfZoom);
+  useEffect(() => {
+    previewPdfZoomRef.current = previewPdfZoom;
+  }, [previewPdfZoom]);
+
+  useEffect(() => {
+    const container = pdfContainerRef.current;
+    if (!container) return;
+
+    let startDist = 0;
+    let startZoom = 0;
+
+    const handleTouchStart = (e: TouchEvent) => {
+      if (e.touches.length === 2) {
+        startDist = Math.hypot(
+          e.touches[0].clientX - e.touches[1].clientX,
+          e.touches[0].clientY - e.touches[1].clientY
+        );
+        startZoom = previewPdfZoomRef.current;
+      }
+    };
+
+    const handleTouchMove = (e: TouchEvent) => {
+      if (e.touches.length === 2) {
+        e.preventDefault(); // Prevent pull-to-refresh and swipe-back
+        const dist = Math.hypot(
+          e.touches[0].clientX - e.touches[1].clientX,
+          e.touches[0].clientY - e.touches[1].clientY
+        );
+        if (startDist > 0) {
+          const scale = dist / startDist;
+          setPreviewPdfZoom(Math.max(0.5, Math.min(3, startZoom * scale)));
+        }
+      }
+    };
+
+    container.addEventListener('touchstart', handleTouchStart, { passive: false });
+    container.addEventListener('touchmove', handleTouchMove, { passive: false });
+
+    return () => {
+      container.removeEventListener('touchstart', handleTouchStart);
+      container.removeEventListener('touchmove', handleTouchMove);
+    };
+  }, [previewPdfUrl]);
+
   useEffect(() => {
     setHasUnsavedChanges(true);
   }, [house]);
@@ -182,7 +227,7 @@ const Controls: React.FC<ControlsProps> = ({
 
       const authWindow = window.open(url, 'oauth_popup', 'width=600,height=700');
       if (!authWindow) {
-        alert('Пожалуйста, разрешите всплывающие окна для авторизации.');
+        alert(t.allowPopups);
       }
     } catch (error) {
       console.error('OAuth error:', error);
@@ -210,7 +255,7 @@ const Controls: React.FC<ControlsProps> = ({
 
   const handleSendToTelegram = async () => {
     if (!house.userName || !house.userPhone) {
-      alert("Пожалуйста, укажите ваше имя и телефон перед отправкой в Telegram.");
+      alert(t.provideNamePhone);
       return;
     }
     setIsSendingTelegram(true);
@@ -243,7 +288,7 @@ const Controls: React.FC<ControlsProps> = ({
       window.open(`https://t.me/${username}?start=${telegramId}`, '_blank');
     } catch (error) {
       console.error("Telegram error:", error);
-      alert("Произошла ошибка при подготовке проекта для Telegram.");
+      alert(t.telegramError);
     } finally {
       setIsSendingTelegram(false);
     }
@@ -298,7 +343,7 @@ const Controls: React.FC<ControlsProps> = ({
   }, [currentStep, setIsMobileExpanded]);
 
   const STEPS = useMemo(() => [
-    { id: 'house_and_plot', label: 'ДОМ И УЧАСТОК', icon: 'fa-home' },
+    { id: 'house_and_plot', label: t.houseAndPlot, icon: 'fa-home' },
     { id: 'planning', label: t.planning, icon: 'fa-th-large' },
     { id: 'landscape', label: t.objects, icon: 'fa-tree' },
     { id: 'finish', label: t.finish, icon: 'fa-check-double' },
@@ -405,25 +450,25 @@ const Controls: React.FC<ControlsProps> = ({
           { id: 'f1_living', name: rt.living, area: 45, isLocked: false }
         );
         if (totalHouseArea > 200) {
-          rooms.push({ id: 'f1_office', name: 'Кабинет', area: 15, isLocked: false });
+          rooms.push({ id: 'f1_office', name: rt.office, area: 15, isLocked: false });
         }
       } else {
         if (totalHouseArea > 300) {
           rooms.push(
             { id: `f${floorNum}_master`, name: rt.masterSuite, area: 25, isLocked: false },
-            { id: `f${floorNum}_bed1`, name: 'Спальня 1', area: 16, isLocked: false },
-            { id: `f${floorNum}_bed2`, name: 'Спальня 2', area: 16, isLocked: false },
-            { id: `f${floorNum}_bed3`, name: 'Спальня 3', area: 16, isLocked: false },
+            { id: `f${floorNum}_bed1`, name: `${rt.kids} 1`, area: 16, isLocked: false },
+            { id: `f${floorNum}_bed2`, name: `${rt.kids} 2`, area: 16, isLocked: false },
+            { id: `f${floorNum}_bed3`, name: `${rt.kids} 3`, area: 16, isLocked: false },
             { id: `f${floorNum}_bath1`, name: rt.bathroom, area: 6, isLocked: true },
-            { id: `f${floorNum}_bath2`, name: 'Санузел 2', area: 6, isLocked: true }
+            { id: `f${floorNum}_bath2`, name: `${rt.bathroom} 2`, area: 6, isLocked: true }
           );
         } else if (totalHouseArea > 200) {
           rooms.push(
             { id: `f${floorNum}_master`, name: rt.masterSuite, area: 25, isLocked: false },
-            { id: `f${floorNum}_bed1`, name: 'Спальня 1', area: 16, isLocked: false },
-            { id: `f${floorNum}_bed2`, name: 'Спальня 2', area: 16, isLocked: false },
+            { id: `f${floorNum}_bed1`, name: `${rt.kids} 1`, area: 16, isLocked: false },
+            { id: `f${floorNum}_bed2`, name: `${rt.kids} 2`, area: 16, isLocked: false },
             { id: `f${floorNum}_bath1`, name: rt.bathroom, area: 6, isLocked: true },
-            { id: `f${floorNum}_bath2`, name: 'Санузел 2', area: 6, isLocked: true }
+            { id: `f${floorNum}_bath2`, name: `${rt.bathroom} 2`, area: 6, isLocked: true }
           );
         } else {
           rooms.push(
@@ -466,7 +511,7 @@ const Controls: React.FC<ControlsProps> = ({
       const plans = JSON.parse(JSON.stringify(prev.calculatedPlan));
       const newRoom = { 
         id: `r_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`, 
-        name: "Новое помещение", 
+        name: t.newRoom, 
         area: 10, 
         isLocked: false 
       };
@@ -631,7 +676,7 @@ const Controls: React.FC<ControlsProps> = ({
         <g key={`${label}-${x}-${z}`} transform={`translate(${svg.x}, ${svg.y}) rotate(${-(rotation * 180) / Math.PI})`}>
           <rect x={-sw/2} y={-sd/2} width={sw} height={sd} fill={color} stroke="#000" strokeWidth="1" />
           <text x="0" y="-2" textAnchor="middle" fill={isDark ? 'white' : 'black'} fontSize={isForExport ? "10" : "7"} fontWeight="900" style={{ textTransform: 'uppercase' }}>{label}</text>
-          <text x="0" y="8" textAnchor="middle" fill={isDark ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.6)'} fontSize={isForExport ? "8" : "5"} fontWeight="bold">{(width || 0).toFixed(1)} x {(depth || 0).toFixed(1)}м</text>
+          <text x="0" y="8" textAnchor="middle" fill={isDark ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.6)'} fontSize={isForExport ? "8" : "5"} fontWeight="bold">{(width || 0).toFixed(1)} x {(depth || 0).toFixed(1)}{t.m}</text>
         </g>
       );
     };
@@ -652,12 +697,12 @@ const Controls: React.FC<ControlsProps> = ({
             const angle = Math.atan2(s2.y - s1.y, s2.x - s1.x) * 180 / Math.PI;
             return (
               <text key={i} x={mx} y={my} textAnchor="middle" transform={`rotate(${angle}, ${mx}, ${my}) translate(0, -8)`}>
-                {(length || 0).toFixed(1)}м
+                {(length || 0).toFixed(1)}{t.m}
               </text>
             );
           })}
         </g>
-        {renderObj(house.housePosX, house.housePosZ, house.houseWidth, house.houseLength, "ДОМ", "#1e293b", house.houseRotation)}
+        {renderObj(house.housePosX, house.housePosZ, house.houseWidth, house.houseLength, t.mainHouse.toUpperCase(), "#1e293b", house.houseRotation)}
         
         {/* Gate rendering in SVG */}
         {(() => {
@@ -674,11 +719,11 @@ const Controls: React.FC<ControlsProps> = ({
           return (
             <g transform={`rotate(${angle}, ${gx}, ${gy})`}>
               <rect x={gx - 15} y={gy - 2} width="30" height="4" fill="#ff5f1f" stroke="#000" strokeWidth="0.5" />
-              <text x={gx} y={gy - 5} textAnchor="middle" fontSize="6" fontWeight="black" fill="#ff5f1f">ВОРОТА</text>
+              <text x={gx} y={gy - 5} textAnchor="middle" fontSize="6" fontWeight="black" fill="#ff5f1f">{t.gate.toUpperCase()}</text>
             </g>
           );
         })()}
-        {house.additions.map((add, idx) => renderObj(add.posX, add.posZ, add.width, add.length, `ЧАСТЬ ${idx+1}`, "#334155", add.rotation))}
+        {house.additions.map((add, idx) => renderObj(add.posX, add.posZ, add.width, add.length, `${t.part.toUpperCase()} ${idx+1}`, "#334155", add.rotation))}
         {house.hasPool && renderObj(house.poolPosX, house.poolPosZ, house.poolWidth, house.poolDepth, t.pool, "#38bdf8", house.poolRotation)}
         {house.hasTerrace && renderObj(house.terracePosX, house.terracePosZ, house.terraceWidth, house.terraceDepth, t.terrace, "#94a3b8", house.terraceRotation)}
         {house.hasBath && renderObj(house.bathPosX, house.bathPosZ, house.bathWidth, house.bathDepth, t.bath, "#78350f", house.bathRotation)}
@@ -701,9 +746,9 @@ const Controls: React.FC<ControlsProps> = ({
         })()}
 
         <g transform={`translate(${padding}, ${svgL - 25})`} fontSize="10" fontWeight="bold">
-           <text fill="#64748b">УЧАСТОК: {plotSotka} сот. | ОБЩАЯ ПЛОЩАДЬ: {Math.round(totalArea)} м²</text>
+           <text fill="#64748b">{t.plot.toUpperCase()}: {plotSotka} {t.sot.toLowerCase()} | {t.totalArea.toUpperCase()}: {Math.round(totalArea)} {t.sqm.toLowerCase()}</text>
            {house.isMapMode && house.mapCenter && (
-             <text y="12" fill="#64748b" fontSize="8">КООРДИНАТЫ: {house.mapCenter.lat.toFixed(6)}, {house.mapCenter.lng.toFixed(6)}</text>
+             <text y="12" fill="#64748b" fontSize="8">{t.coordinates.toUpperCase()}: {house.mapCenter.lat.toFixed(6)}, {house.mapCenter.lng.toFixed(6)}</text>
            )}
         </g>
       </svg>
@@ -729,7 +774,7 @@ const Controls: React.FC<ControlsProps> = ({
         const estimateEl = document.getElementById('estimate-doc-root');
 
         if (!passportEl || !calcEl || !sitePlanEl) {
-          throw new Error("Не найдены элементы для генерации PDF.");
+          throw new Error(t.pdfElementsNotFound);
         }
 
         const sitePlanCanvas = await html2canvas(sitePlanEl, { scale: 2, backgroundColor: '#ffffff' });
@@ -752,11 +797,11 @@ const Controls: React.FC<ControlsProps> = ({
           setHasUnsavedChanges(false);
           setRevisionCount(prev => prev + 1);
         } else {
-          throw new Error("Ошибка при отправке проекта.");
+          throw new Error(t.sendProjectError);
         }
     } catch (e: any) { 
         console.error(e); 
-        setOrderError(e.message || "Произошла неизвестная ошибка.");
+        setOrderError(e.message || t.unknownError);
     } finally { 
         setIsOrdering(false); 
     }
@@ -768,7 +813,7 @@ const Controls: React.FC<ControlsProps> = ({
       {isMobile && currentStep === 0 && isHouseOutOfBounds && (
         <div className="fixed top-[60px] left-4 right-4 z-[1000] bg-red-500 text-white p-3 rounded-xl text-[10px] font-bold uppercase flex items-start gap-2 shadow-2xl animate-in fade-in slide-in-from-top-4">
           <i className="fas fa-exclamation-triangle mt-0.5 text-red-200"></i>
-          <span className="leading-relaxed">Внимание: Дом не помещается на участок. Уменьшите размеры дома или сместите его, чтобы соблюсти отступы 3 метра от границ участка.</span>
+          <span className="leading-relaxed">{t.houseDoesNotFit}</span>
         </div>
       )}
 
@@ -782,33 +827,33 @@ const Controls: React.FC<ControlsProps> = ({
             <div className="w-6 h-6 bg-slate-100 rounded-full flex items-center justify-center group-hover:bg-[#ff5f1f] transition-colors">
               <i className="fas fa-chevron-left text-slate-900 group-hover:text-white text-[10px]"></i>
             </div>
-            <span className="text-[12px] font-black uppercase tracking-widest">{currentStep === 0 ? 'ВЫХОД' : 'НАЗАД'}</span>
+            <span className="text-[12px] font-black uppercase tracking-widest">{currentStep === 0 ? t.exit : t.back}</span>
           </button>
 
           <div className="bg-white/90 backdrop-blur-xl px-6 py-3 rounded-2xl shadow-2xl border border-white/20 flex flex-col items-start pointer-events-auto">
-            <span className="text-[8px] font-black text-slate-400 uppercase tracking-[0.2em]">ПРОЕКТ № {house.name}</span>
-            <span className="text-[12px] font-bold text-slate-900 uppercase tracking-widest">{house.userName || 'БЕЗ ИМЕНИ'}</span>
+            <span className="text-[8px] font-black text-slate-400 uppercase tracking-[0.2em]">{t.projectNum} {house.name}</span>
+            <span className="text-[12px] font-bold text-slate-900 uppercase tracking-widest">{house.userName || t.noName}</span>
           </div>
         </div>
 
         <div className="flex items-center gap-4 pointer-events-auto">
           <div className="flex items-center gap-4 bg-white/80 backdrop-blur-xl px-8 py-3 rounded-3xl shadow-2xl border border-white/20">
             <div className="flex flex-col items-center px-4 border-r border-slate-200">
-              <span className="text-[8px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">УЧАСТОК</span>
-              <span className="text-[16px] font-black text-slate-900 leading-none">{plotSotka} <span className="text-[10px] text-slate-400">СОТ.</span></span>
+              <span className="text-[8px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">{t.plot}</span>
+              <span className="text-[16px] font-black text-slate-900 leading-none">{plotSotka} <span className="text-[10px] text-slate-400">{t.sot}</span></span>
             </div>
             
             {currentStep >= 1 && (
               <div className="flex flex-col items-center px-4 border-r border-slate-200 animate-in fade-in slide-in-from-top-2 duration-500">
-                <span className="text-[8px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">ДОМ</span>
-                <span className="text-[16px] font-black text-[#ff5f1f] leading-none">{Math.round(totalArea)} <span className="text-[10px] text-slate-400">М²</span></span>
+                <span className="text-[8px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">{t.mainHouse}</span>
+                <span className="text-[16px] font-black text-[#ff5f1f] leading-none">{Math.round(totalArea)} <span className="text-[10px] text-slate-400">{t.sqm}</span></span>
               </div>
             )}
 
             {currentStep >= 3 && (
               <div className="flex flex-col items-center px-4 animate-in fade-in slide-in-from-top-2 duration-500">
-                <span className="text-[8px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">ПОСТРОЙКИ</span>
-                <span className="text-[16px] font-black text-slate-900 leading-none">{Math.round(totalBuildingsArea)} <span className="text-[10px] text-slate-400">М²</span></span>
+                <span className="text-[8px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">{t.buildingsListPdf}</span>
+                <span className="text-[16px] font-black text-slate-900 leading-none">{Math.round(totalBuildingsArea)} <span className="text-[10px] text-slate-400">{t.sqm}</span></span>
               </div>
             )}
           </div>
@@ -831,14 +876,14 @@ const Controls: React.FC<ControlsProps> = ({
          <div className="flex flex-col gap-6">
             <div className="flex justify-between items-end border-b-4 border-slate-900 pb-4">
                <div>
-                  <h2 className="text-3xl font-black uppercase">Генеральный План</h2>
-                  <p className="text-sm font-bold text-slate-500 uppercase tracking-widest">Проект: {house.name}</p>
+                  <h2 className="text-3xl font-black uppercase">{t.generalPlan}</h2>
+                  <p className="text-sm font-bold text-slate-500 uppercase tracking-widest">{t.projectLabel} {house.name}</p>
                </div>
-               <div className="text-right text-[10px] font-black uppercase text-slate-400">М 1:100</div>
+               <div className="text-right text-[10px] font-black uppercase text-slate-400">{t.scale100}</div>
             </div>
             <SitePlanSVG isForExport={true} className="max-w-full h-auto max-h-[800px]" />
             <div className="flex justify-between border-t-2 border-slate-100 pt-4 text-[9px] font-bold text-slate-400 uppercase">
-               <span>Заказчик: {house.userName}</span>
+               <span>{t.customerLabel} {house.userName}</span>
                <span>PH HOME Parametric System</span>
             </div>
          </div>
@@ -855,9 +900,9 @@ const Controls: React.FC<ControlsProps> = ({
                   </div>
                </div>
                <div className="flex flex-col items-end gap-3">
-                  <h1 className="text-3xl font-light uppercase tracking-[0.3em] leading-tight text-right text-slate-900">Архитектурный<br/><span className="font-black">Паспорт</span></h1>
+                  <h1 className="text-3xl font-light uppercase tracking-[0.3em] leading-tight text-right text-slate-900">{t.archPassport}<br/><span className="font-black">{t.passport}</span></h1>
                   <div className="text-right">
-                    <p className="text-[8px] font-black text-slate-300 uppercase tracking-[0.4em]">ПРОЕКТ № {house.name}</p>
+                    <p className="text-[8px] font-black text-slate-300 uppercase tracking-[0.4em]">{t.projectLabel} {house.name}</p>
                   </div>
                </div>
             </div>
@@ -865,31 +910,31 @@ const Controls: React.FC<ControlsProps> = ({
             <div className="grid grid-cols-12 gap-10">
                <div className="col-span-5 space-y-10">
                   <div className="space-y-1">
-                    <p className="text-[8px] font-black text-slate-300 uppercase tracking-[0.2em] mb-2">ЗАКАЗЧИК</p>
+                    <p className="text-[8px] font-black text-slate-300 uppercase tracking-[0.2em] mb-2">{t.customer}</p>
                     <p className="text-xl font-light text-slate-900 leading-tight">{house.userName || '---'}</p>
                     <p className="text-xs font-medium text-slate-400 mt-1">{house.userPhone}</p>
                   </div>
                   
                   <div className="grid grid-cols-2 gap-6 border-t border-slate-100 pt-6">
                      <div className="text-left">
-                        <p className="text-[7px] font-black text-slate-300 uppercase mb-2 tracking-[0.15em]">ОБЩАЯ ПЛОЩАДЬ</p>
-                        <p className="text-2xl font-light text-slate-900">{Math.round(totalBuildingsArea)}<span className="text-xs ml-1 text-slate-400">м²</span></p>
+                        <p className="text-[7px] font-black text-slate-300 uppercase mb-2 tracking-[0.15em]">{t.totalArea}</p>
+                        <p className="text-2xl font-light text-slate-900">{Math.round(totalBuildingsArea)}<span className="text-xs ml-1 text-slate-400">{t.sqm.toLowerCase()}</span></p>
                      </div>
                      <div className="text-left">
-                        <p className="text-[7px] font-black text-slate-300 uppercase mb-2 tracking-[0.15em]">УЧАСТОК</p>
-                        <p className="text-2xl font-light text-slate-900">{plotSotka}<span className="text-xs ml-1 text-slate-400">сот.</span></p>
+                        <p className="text-[7px] font-black text-slate-300 uppercase mb-2 tracking-[0.15em]">{t.plot}</p>
+                        <p className="text-2xl font-light text-slate-900">{plotSotka}<span className="text-xs ml-1 text-slate-400">{t.sot.toLowerCase()}</span></p>
                      </div>
                   </div>
 
                   {house.isMapMode && house.mapCenter && (
                     <div className="pt-4 border-t border-slate-100">
-                      <p className="text-[7px] font-black text-slate-300 uppercase tracking-[0.15em] mb-2">ЛОКАЦИЯ</p>
+                      <p className="text-[7px] font-black text-slate-300 uppercase tracking-[0.15em] mb-2">{t.location}</p>
                       <p className="text-[9px] font-medium font-mono text-slate-400 tracking-widest">{house.mapCenter.lat.toFixed(6)}, {house.mapCenter.lng.toFixed(6)}</p>
                     </div>
                   )}
 
                   <div className="pt-6 border-t border-slate-100">
-                    <h3 className="text-[8px] font-black uppercase text-slate-300 mb-3 tracking-[0.2em]">КОНЦЕПЦИЯ</h3>
+                    <h3 className="text-[8px] font-black uppercase text-slate-300 mb-3 tracking-[0.2em]">{t.concept}</h3>
                     <p className="text-xs font-bold leading-relaxed text-slate-800 uppercase tracking-wider">{house.type}</p>
                     <p className="text-[11px] font-medium leading-relaxed text-slate-400 mt-2 italic">{house.styleDescription}</p>
                   </div>
@@ -899,34 +944,34 @@ const Controls: React.FC<ControlsProps> = ({
                   <div className="bg-white rounded-[48px] p-6 flex items-center justify-center overflow-hidden border border-slate-100 shadow-[0_30px_60px_-15px_rgba(0,0,0,0.06)] aspect-square">
                      <SitePlanSVG isForExport={true} className="max-w-full max-h-full" />
                   </div>
-                  <p className="text-[7px] font-black text-slate-300 uppercase tracking-[0.4em] text-center">ГЕНЕРАЛЬНЫЙ ПЛАН • МАСШТАБ 1:100</p>
+                  <p className="text-[7px] font-black text-slate-300 uppercase tracking-[0.4em] text-center">{t.masterPlanScale}</p>
                </div>
             </div>
 
             {house.isMapMode && house.mapSnapshotUrl && (
               <div className="space-y-4">
-                <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">КАРТА СО СПУТНИКА</h3>
+                <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{t.satelliteMap}</h3>
                 <img src={house.mapSnapshotUrl} crossOrigin="anonymous" className="w-full h-auto object-contain rounded-[40px] border-2 border-slate-100 shadow-lg" />
               </div>
             )}
 
             <div className="grid grid-cols-2 gap-8">
                <div className="space-y-4">
-                  <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">ВЕДОМОСТЬ СТРОЕНИЙ</h3>
+                  <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{t.buildingsListPdf}</h3>
                   <div className="space-y-2">
                      <div className="flex justify-between border-b py-2 text-sm font-bold">
-                        <span>Основной дом ({house.floors} эт)</span>
+                        <span>{t.mainHouse} ({house.floors} {t.floorsCount})</span>
                         <div className="text-right">
-                           <span className="block">{house.houseWidth}x{house.houseLength}м</span>
-                           <span className="text-[10px] text-[#ff5f1f]">{Math.round(house.houseWidth * house.houseLength * house.floors)} м²</span>
+                           <span className="block">{house.houseWidth}x{house.houseLength}{t.m}</span>
+                           <span className="text-[10px] text-[#ff5f1f]">{Math.round(house.houseWidth * house.houseLength * house.floors)} {t.sqm.toLowerCase()}</span>
                         </div>
                      </div>
                      {house.additions.map((a, i) => (
                        <div key={i} className="flex justify-between border-b py-2 text-sm font-bold">
-                          <span>Пристройка {i+1} ({a.floors} эт)</span>
+                          <span>{t.extension} {i+1} ({a.floors} {t.floorsCount})</span>
                           <div className="text-right">
-                             <span className="block">{a.width}x{a.length}м</span>
-                             <span className="text-[10px] text-[#ff5f1f]">{Math.round(a.width * a.length * a.floors)} м²</span>
+                             <span className="block">{a.width}x{a.length}{t.m}</span>
+                             <span className="text-[10px] text-[#ff5f1f]">{Math.round(a.width * a.length * a.floors)} {t.sqm.toLowerCase()}</span>
                           </div>
                        </div>
                      ))}
@@ -934,26 +979,26 @@ const Controls: React.FC<ControlsProps> = ({
                        <div className="flex justify-between border-b py-2 text-sm font-bold">
                           <span>{t.pool}</span>
                           <div className="text-right">
-                             <span className="block">{house.poolWidth}x{house.poolDepth}м</span>
-                             <span className="text-[10px] text-[#ff5f1f]">{Math.round(house.poolWidth * house.poolDepth)} м²</span>
+                             <span className="block">{house.poolWidth}x{house.poolDepth}{t.m}</span>
+                             <span className="text-[10px] text-[#ff5f1f]">{Math.round(house.poolWidth * house.poolDepth)} {t.sqm.toLowerCase()}</span>
                           </div>
                        </div>
                      )}
                      {house.hasGarage && (
                        <div className="flex justify-between border-b py-2 text-sm font-bold">
-                          <span>{t.garage} ({house.garageCars} авт)</span>
+                          <span>{t.garage} ({house.garageCars} {t.carsShort})</span>
                           <div className="text-right">
-                             <span className="block">{getGarageWidth(house.garageCars, isSmallPlot)}x{isSmallPlot ? 3.25 : 6.5}м</span>
-                             <span className="text-[10px] text-[#ff5f1f]">{Math.round(getGarageWidth(house.garageCars, isSmallPlot) * (isSmallPlot ? 3.25 : 6.5))} м²</span>
+                             <span className="block">{getGarageWidth(house.garageCars, isSmallPlot)}x{isSmallPlot ? 3.25 : 6.5}{t.m}</span>
+                             <span className="text-[10px] text-[#ff5f1f]">{Math.round(getGarageWidth(house.garageCars, isSmallPlot) * (isSmallPlot ? 3.25 : 6.5))} {t.sqm.toLowerCase()}</span>
                           </div>
                        </div>
                      )}
                      {house.hasCarport && (
                        <div className="flex justify-between border-b py-2 text-sm font-bold">
-                          <span>{t.carport} ({house.carportCars} авт)</span>
+                          <span>{t.carport} ({house.carportCars} {t.carsShort})</span>
                           <div className="text-right">
-                             <span className="block">{getCarportWidth(house.carportCars, isSmallPlot)}x{isSmallPlot ? 3.0 : 6.0}м</span>
-                             <span className="text-[10px] text-[#ff5f1f]">{Math.round(getCarportWidth(house.carportCars, isSmallPlot) * (isSmallPlot ? 3.0 : 6.0))} м²</span>
+                             <span className="block">{getCarportWidth(house.carportCars, isSmallPlot)}x{isSmallPlot ? 3.0 : 6.0}{t.m}</span>
+                             <span className="text-[10px] text-[#ff5f1f]">{Math.round(getCarportWidth(house.carportCars, isSmallPlot) * (isSmallPlot ? 3.0 : 6.0))} {t.sqm.toLowerCase()}</span>
                           </div>
                        </div>
                      )}
@@ -961,8 +1006,8 @@ const Controls: React.FC<ControlsProps> = ({
                        <div className="flex justify-between border-b py-2 text-sm font-bold">
                           <span>{t.bath}</span>
                           <div className="text-right">
-                             <span className="block">{house.bathWidth}x{house.bathDepth}м</span>
-                             <span className="text-[10px] text-[#ff5f1f]">{Math.round(house.bathWidth * house.bathDepth)} м²</span>
+                             <span className="block">{house.bathWidth}x{house.bathDepth}{t.m}</span>
+                             <span className="text-[10px] text-[#ff5f1f]">{Math.round(house.bathWidth * house.bathDepth)} {t.sqm.toLowerCase()}</span>
                           </div>
                        </div>
                      )}
@@ -970,8 +1015,8 @@ const Controls: React.FC<ControlsProps> = ({
                        <div className="flex justify-between border-b py-2 text-sm font-bold">
                           <span>{t.terrace}</span>
                           <div className="text-right">
-                             <span className="block">{house.terraceWidth}x{house.terraceDepth}м</span>
-                             <span className="text-[10px] text-[#ff5f1f]">{Math.round(house.terraceWidth * house.terraceDepth)} м²</span>
+                             <span className="block">{house.terraceWidth}x{house.terraceDepth}{t.m}</span>
+                             <span className="text-[10px] text-[#ff5f1f]">{Math.round(house.terraceWidth * house.terraceDepth)} {t.sqm.toLowerCase()}</span>
                           </div>
                        </div>
                      )}
@@ -979,50 +1024,50 @@ const Controls: React.FC<ControlsProps> = ({
                        <div className="flex justify-between border-b py-2 text-sm font-bold">
                           <span>{t.bbq}</span>
                           <div className="text-right">
-                             <span className="block">{house.bbqWidth}x{house.bbqDepth}м</span>
-                             <span className="text-[10px] text-[#ff5f1f]">{Math.round(house.bbqWidth * house.bbqDepth)} м²</span>
+                             <span className="block">{house.bbqWidth}x{house.bbqDepth}{t.m}</span>
+                             <span className="text-[10px] text-[#ff5f1f]">{Math.round(house.bbqWidth * house.bbqDepth)} {t.sqm.toLowerCase()}</span>
                           </div>
                        </div>
                      )}
                      <div className="flex justify-between pt-4 border-t-2 border-slate-900 text-lg font-black">
-                        <span>ИТОГО ПЛОЩАДЬ СТРОЕНИЙ</span>
-                        <span>{Math.round(totalBuildingsArea)} м²</span>
+                        <span>{t.totalBuildingsAreaPdf}</span>
+                        <span>{Math.round(totalBuildingsArea)} {t.sqm.toLowerCase()}</span>
                      </div>
                   </div>
                </div>
                <div className="space-y-4">
-                  <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">ВИЗУАЛИЗАЦИЯ СТИЛЯ</h3>
+                  <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{t.styleVisualization}</h3>
                   {house.styleImageUrl && <img src={house.styleImageUrl} crossOrigin="anonymous" className="w-full h-auto max-h-64 object-contain rounded-3xl shadow-lg bg-slate-50" />}
                </div>
             </div>
             <div>
-               <h2 className="text-xl font-black mb-6 uppercase border-b-2 border-slate-100 pb-2">ЭКСПЛИКАЦИЯ ПОМЕЩЕНИЙ</h2>
+               <h2 className="text-xl font-black mb-6 uppercase border-b-2 border-slate-100 pb-2">{t.roomExplication}</h2>
                <div className="grid grid-cols-2 gap-10">
                   {house.calculatedPlan?.map((floor, i) => (
                     <div key={i} className="space-y-3">
                        <div className="flex justify-between items-center bg-orange-50 px-3 py-1 rounded-full">
-                          <p className="font-black text-[12px] text-[#ff5f1f] uppercase">{floor.floorNumber} ЭТАЖ</p>
-                          <p className="font-black text-[10px] text-slate-500">{Math.round(floor.rooms.reduce((acc, r) => acc + r.area, 0))} м²</p>
+                          <p className="font-black text-[12px] text-[#ff5f1f] uppercase">{floor.floorNumber} {t.floor}</p>
+                          <p className="font-black text-[10px] text-slate-500">{Math.round(floor.rooms.reduce((acc, r) => acc + r.area, 0))} {t.sqm.toLowerCase()}</p>
                        </div>
                        <div className="space-y-1">
                         {floor.rooms.map(r => (
                           <div key={r.id} className="flex justify-between border-b border-slate-50 py-2 text-[13px]">
                             <span className="font-medium">{r.name}</span>
-                            <span className="font-black">{Math.round(r.area)} м²</span>
+                            <span className="font-black">{Math.round(r.area)} {t.sqm.toLowerCase()}</span>
                           </div>
                         ))}
                         <div className="flex justify-between border-b border-slate-50 py-2 text-[13px] opacity-60 italic">
-                          <span>Стены и перегородки</span>
-                          <span className="font-black">{Math.round(getAreaForFloor(i) * WALL_RATIO)} м²</span>
+                          <span>{t.wallsAndPartitions}</span>
+                          <span className="font-black">{Math.round(getAreaForFloor(i) * WALL_RATIO)} {t.sqm.toLowerCase()}</span>
                         </div>
                         <div className="flex justify-between border-b border-slate-50 py-2 text-[13px] opacity-60 italic">
-                          <span>Холлы и коридоры</span>
-                          <span className="font-black">{Math.round(getAreaForFloor(i) * HALL_RATIO)} м²</span>
+                          <span>{t.hallsAndCorridors}</span>
+                          <span className="font-black">{Math.round(getAreaForFloor(i) * HALL_RATIO)} {t.sqm.toLowerCase()}</span>
                         </div>
                         {maxFloors > 1 && (
                           <div className="flex justify-between border-b border-slate-50 py-2 text-[13px] opacity-60 italic">
-                            <span>Лестница</span>
-                            <span className="font-black">{STAIR_AREA} м²</span>
+                            <span>{t.stairs}</span>
+                            <span className="font-black">{STAIR_AREA} {t.sqm.toLowerCase()}</span>
                           </div>
                         )}
                        </div>
@@ -1032,7 +1077,7 @@ const Controls: React.FC<ControlsProps> = ({
             </div>
             <div className="mt-auto pt-10 border-t border-slate-100 flex justify-between items-end text-[9px] text-slate-400 font-bold uppercase tracking-widest">
                <span>PH HOME Parametric System • {new Date().toLocaleDateString()}</span>
-               <span>Проект сформирован автоматически</span>
+               <span>{t.autoGenerated}</span>
             </div>
          </div>
          <div id="calculation-doc-root" className="flex flex-col gap-10 text-slate-900 p-12 font-sans bg-white pb-24" style={{ width: '850px' }}>
@@ -1045,20 +1090,13 @@ const Controls: React.FC<ControlsProps> = ({
                   </div>
                </div>
                <div className="flex flex-col items-end gap-3 text-right">
-                  <h1 className="text-3xl font-light uppercase tracking-[0.3em] leading-tight text-slate-900">Расчёт стоимости<br/><span className="font-black">Концепт Проекта</span></h1>
-                  <p className="text-[8px] font-black text-slate-300 uppercase tracking-[0.4em]">ПРОЕКТ № {house.name}</p>
+                  <h1 className="text-3xl font-light uppercase tracking-[0.3em] leading-tight text-slate-900">{t.costCalculation}<br/><span className="font-black">{t.conceptProject}</span></h1>
+                  <p className="text-[8px] font-black text-slate-300 uppercase tracking-[0.4em]">{t.projectLabel} {house.name}</p>
                </div>
             </div>
-
-            <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100">
-               <p className="text-[10px] font-medium text-slate-500 leading-relaxed italic text-center">
-                  {t.preliminaryNotice}
-               </p>
-            </div>
-
             <div className="grid grid-cols-12 gap-10">
                <div className="col-span-12 space-y-2">
-                  <p className="text-[8px] font-black text-slate-300 uppercase tracking-[0.2em] mb-2">ЗАКАЗЧИК</p>
+                  <p className="text-[8px] font-black text-slate-300 uppercase tracking-[0.2em] mb-2">{t.customer}</p>
                   <p className="text-xl font-light text-slate-900 leading-tight">{house.userName || '---'}</p>
                   <p className="text-xs font-medium text-slate-400 mt-1">{house.userPhone || '---'}</p>
                   <p className="text-xs font-medium text-slate-400">{house.userEmail || '---'}</p>
@@ -1067,19 +1105,19 @@ const Controls: React.FC<ControlsProps> = ({
 
             <div className="space-y-8">
                <div className="space-y-4">
-                  <h3 className="text-[8px] font-black uppercase text-slate-300 tracking-[0.2em]">Детализация стоимости</h3>
+                  <h3 className="text-[8px] font-black uppercase text-slate-300 tracking-[0.2em]">{t.costDetails}</h3>
                   <table className="w-full border-collapse">
                      <thead>
                         <tr className="border-b border-slate-200">
-                           <th className="text-left py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">Наименование</th>
-                           <th className="text-left py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">Параметры</th>
-                           <th className="text-right py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">Стоимость</th>
+                           <th className="text-left py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">{t.itemName}</th>
+                           <th className="text-left py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">{t.parameters}</th>
+                           <th className="text-right py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">{t.cost}</th>
                         </tr>
                      </thead>
                      <tbody className="text-[11px] font-medium">
                         <tr className="border-b border-slate-50">
-                           <td className="py-4 text-slate-600">Проектирование основного дома</td>
-                           <td className="py-4 text-slate-400">{Math.round(totalArea)} м²</td>
+                           <td className="py-4 text-slate-600">{t.designMainHouse}</td>
+                           <td className="py-4 text-slate-400">{Math.round(totalArea)} {t.sqm.toLowerCase()}</td>
                            <td className="py-4 text-right font-bold text-slate-900">
                               {(() => {
                                  const houseArea = Math.round(totalArea);
@@ -1091,21 +1129,21 @@ const Controls: React.FC<ControlsProps> = ({
                            </td>
                         </tr>
                         <tr className="border-b border-slate-50">
-                           <td className="py-4 text-slate-600">Проектирование доп. построек</td>
-                           <td className="py-4 text-slate-400">{Math.round(totalBuildingsArea - totalArea)} м²</td>
+                           <td className="py-4 text-slate-600">{t.designAdditions}</td>
+                           <td className="py-4 text-slate-400">{Math.round(totalBuildingsArea - totalArea)} {t.sqm.toLowerCase()}</td>
                            <td className="py-4 text-right font-bold text-slate-900">
                               {(Math.round(totalBuildingsArea - totalArea) * 2000).toLocaleString()} ₸
                            </td>
                         </tr>
                         <tr className="border-b border-slate-50">
-                           <td className="py-4 text-slate-600">Посадка объектов на участок</td>
-                           <td className="py-4 text-slate-400">{plotSotka} сот.</td>
+                           <td className="py-4 text-slate-600">{t.plotSiting}</td>
+                           <td className="py-4 text-slate-400">{plotSotka} {t.sot.toLowerCase()}</td>
                            <td className="py-4 text-right font-bold text-slate-900">
                               {(Math.round(plotSotkaValue * 40000)).toLocaleString()} ₸
                            </td>
                         </tr>
                         <tr className="bg-slate-50/50">
-                           <td colSpan={2} className="py-5 pl-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Итого стоимость концепт проекта</td>
+                           <td colSpan={2} className="py-5 pl-4 text-[10px] font-black uppercase tracking-widest text-slate-400">{t.totalConceptCost}</td>
                            <td className="py-5 pr-4 text-right text-[16px] font-black text-[#ff5f1f]">
                               {(() => {
                                  const houseArea = Math.round(totalArea);
@@ -1127,11 +1165,11 @@ const Controls: React.FC<ControlsProps> = ({
 
                <div className="grid grid-cols-2 gap-12">
                   <div className="space-y-6">
-                     <h3 className="text-[8px] font-black uppercase text-slate-300 tracking-[0.2em]">Состав концепт проекта</h3>
+                     <h3 className="text-[8px] font-black uppercase text-slate-300 tracking-[0.2em]">{t.conceptComposition}</h3>
                      <div className="space-y-4">
                         <p className="text-[11px] font-black text-slate-900 leading-tight uppercase tracking-wider">{t.conceptModel}</p>
                         <div className="bg-orange-50 p-4 rounded-xl border border-orange-100">
-                           <p className="text-[9px] font-black text-[#ff5f1f] uppercase tracking-widest text-center">В стоимость входит 3D макет 1:50</p>
+                           <p className="text-[9px] font-black text-[#ff5f1f] uppercase tracking-widest text-center">{t.modelIncludedPdf}</p>
                         </div>
                         <ul className="grid grid-cols-1 gap-2">
                            {t.conceptList.map((item: string, i: number) => (
@@ -1144,7 +1182,7 @@ const Controls: React.FC<ControlsProps> = ({
                      </div>
                   </div>
                   <div className="space-y-6">
-                     <p className="text-[8px] font-black text-slate-300 uppercase tracking-[0.2em]">Визуализация макета</p>
+                     <p className="text-[8px] font-black text-slate-300 uppercase tracking-[0.2em]">{t.modelVisualization}</p>
                      <div className="rounded-[32px] overflow-hidden border border-slate-100 shadow-lg grayscale-[0.2] hover:grayscale-0 transition-all duration-700">
                         <img src={MODEL_PHOTO_URL} crossOrigin="anonymous" className="w-full h-auto object-cover" alt="3D Model" />
                      </div>
@@ -1154,7 +1192,7 @@ const Controls: React.FC<ControlsProps> = ({
 
             <div className="mt-auto pt-10 border-t border-slate-100 flex justify-between items-end text-[9px] text-slate-400 font-bold uppercase tracking-widest">
                <span>PH HOME Parametric System • {new Date().toLocaleDateString()}</span>
-               <span>Расчет сформирован автоматически</span>
+               <span>{t.calcAutoGenerated}</span>
             </div>
          </div>
       </div>
@@ -1164,16 +1202,16 @@ const Controls: React.FC<ControlsProps> = ({
           <div className="w-4 h-4 bg-slate-100 rounded-full flex items-center justify-center">
             <i className="fas fa-chevron-left text-slate-900 text-[8px]"></i>
           </div>
-          <span className="text-[10px] font-black uppercase tracking-tighter">{currentStep === 0 ? 'ВЫХОД' : 'НАЗАД'}</span>
+          <span className="text-[10px] font-black uppercase tracking-tighter">{currentStep === 0 ? t.exit : t.back}</span>
         </button>
         <div className="flex items-start gap-1.5 pointer-events-none">
           <div className="bg-white/90 backdrop-blur px-2 py-1 rounded-[12px] shadow-xl border border-slate-100 flex flex-col items-center">
-            <span className="text-[6px] font-black text-slate-400 uppercase tracking-tighter mb-0.5 leading-none">ДОМ</span>
-            <span className="text-[11px] font-black text-[#ff5f1f] leading-none">{Math.round(house.houseWidth * house.houseLength * house.floors)} <span className="text-[8px] text-slate-900 font-bold">М²</span></span>
+            <span className="text-[6px] font-black text-slate-400 uppercase tracking-tighter mb-0.5 leading-none">{t.mainHouse}</span>
+            <span className="text-[11px] font-black text-[#ff5f1f] leading-none">{Math.round(house.houseWidth * house.houseLength * house.floors)} <span className="text-[8px] text-slate-900 font-bold">{t.sqm}</span></span>
           </div>
           <div className="bg-white/90 backdrop-blur px-2 py-1 rounded-[12px] shadow-xl border border-slate-100 flex flex-col items-center">
-            <span className="text-[6px] font-black text-slate-400 uppercase tracking-tighter mb-0.5 leading-none">УЧАСТОК</span>
-            <span className="text-[11px] font-black text-[#ff5f1f] leading-none">{plotSotka} <span className="text-[8px] text-slate-900 font-bold">СОТ.</span></span>
+            <span className="text-[6px] font-black text-slate-400 uppercase tracking-tighter mb-0.5 leading-none">{t.plot}</span>
+            <span className="text-[11px] font-black text-[#ff5f1f] leading-none">{plotSotka} <span className="text-[8px] text-slate-900 font-bold">{t.sot}</span></span>
           </div>
           {currentStep < 3 && (
             <button onClick={handleContinue} className={`pointer-events-auto bg-white/90 backdrop-blur text-slate-900 px-3 py-1.5 rounded-[12px] shadow-xl flex items-center gap-1.5 border border-slate-100 active:scale-95 transition-all ${currentStep === 2 || isNextStepFlashing ? 'animate-pulse-orange ring-2 ring-[#ff5f1f]' : ''}`}>
@@ -1194,7 +1232,7 @@ const Controls: React.FC<ControlsProps> = ({
             <div className="flex justify-between items-center bg-slate-100/95 p-0.5 rounded-2xl shrink-0 border border-slate-200 shadow-sm">
               <button onClick={() => onBackToWelcome?.()} className="hidden lg:flex w-12 py-3 px-0.5 rounded-xl flex-col items-center gap-0.5 transition-all text-slate-400 hover:text-[#ff5f1f] hover:bg-white hover:shadow-md">
                 <i className="fas fa-arrow-left text-[13px]"></i>
-                <span className="text-[7.5px] font-black uppercase tracking-tighter text-center leading-none">ВЫХОД</span>
+                <span className="text-[7.5px] font-black uppercase tracking-tighter text-center leading-none">{t.exit}</span>
               </button>
               <div className="hidden lg:block w-[1px] h-8 bg-slate-200 mx-1"></div>
               {STEPS.map((step, i) => (
@@ -1219,7 +1257,7 @@ const Controls: React.FC<ControlsProps> = ({
                    </div>
                    <div className="mt-1 lg:mt-2 flex items-center gap-1.5 lg:gap-2 text-slate-400">
                       <i className="fas fa-expand-arrows-alt text-[8px] lg:text-sm"></i>
-                      <span className="text-[7px] lg:text-[9px] font-bold uppercase tracking-widest">Тяните за углы для изменения</span>
+                      <span className="text-[7px] lg:text-[9px] font-bold uppercase tracking-widest">{t.dragCornersToChange}</span>
                    </div>
                 </div>
 
@@ -1286,18 +1324,18 @@ const Controls: React.FC<ControlsProps> = ({
                 </div>
 
                 <div className="bg-white rounded-2xl lg:rounded-[28px] p-3 lg:p-5 border shadow-md space-y-2 lg:space-y-3">
-                  <h4 className="text-[8px] lg:text-[10px] font-black uppercase text-slate-400 tracking-widest">Учет инсоляции</h4>
+                  <h4 className="text-[8px] lg:text-[10px] font-black uppercase text-slate-400 tracking-widest">{t.insolationAccounting}</h4>
                   <button 
                     onClick={() => setHouse(p => ({ ...p, showShadows: !p.showShadows, sunTime: p.sunTime || 12 }))}
                     className={`w-full py-4 lg:py-5 rounded-2xl font-black uppercase text-[11px] flex items-center justify-center gap-2 active:scale-95 transition-all shadow-lg ${house.showShadows ? 'bg-[#ff5f1f] text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
                   >
                     <i className="fas fa-sun"></i>
-                    {house.showShadows ? 'Скрыть тени' : 'Показать тени'}
+                    {house.showShadows ? t.hideShadows : t.showShadows}
                   </button>
                   {house.showShadows && (
                     <div className="pt-2 animate-in fade-in slide-in-from-top-2">
                       <Slider 
-                        label="Время суток" 
+                        label={t.timeOfDay} 
                         value={house.sunTime || 12} 
                         min={6} 
                         max={20} 
@@ -1318,7 +1356,7 @@ const Controls: React.FC<ControlsProps> = ({
                   <div className="col-span-2 flex items-center justify-between mb-0.5 lg:mb-1">
                     <div className="flex items-center gap-1.5 lg:gap-2">
                       <div className={`w-5 h-5 lg:w-7 lg:h-7 rounded-full flex items-center justify-center ${selectedObjectId === 'house' ? 'bg-white text-[#ff5f1f]' : 'bg-slate-800 text-white'}`}><i className="fas fa-cog text-[8px] lg:text-sm"></i></div>
-                      <h3 className="text-white text-[9px] lg:text-[11px] font-black uppercase tracking-widest">Параметры дома</h3>
+                      <h3 className="text-white text-[9px] lg:text-[11px] font-black uppercase tracking-widest">{t.houseParameters}</h3>
                     </div>
                   </div>
                   <div className="flex flex-col"><span className={`text-[7px] lg:text-[8px] font-black uppercase mb-0.5 ${selectedObjectId === 'house' ? 'text-white/60' : 'text-slate-500'}`}>{t.totalArea}</span><span className="text-white text-lg lg:text-2xl font-black">{Math.round(totalArea)} <span className="text-[8px] lg:text-[10px]">M²</span></span></div>
@@ -1333,11 +1371,11 @@ const Controls: React.FC<ControlsProps> = ({
                   {!isMobile && isHouseOutOfBounds && (
                     <div className="bg-red-500 text-white p-3 lg:p-4 rounded-xl lg:rounded-2xl text-[9px] lg:text-[11px] font-bold uppercase flex items-start gap-3 shadow-lg animate-in fade-in slide-in-from-top-2">
                       <i className="fas fa-exclamation-triangle mt-0.5 text-red-200 text-sm lg:text-base"></i>
-                      <span className="leading-relaxed">Внимание: Дом не помещается на участок. Уменьшите размеры дома или сместите его, чтобы соблюсти отступы 3 метра от границ участка.</span>
+                      <span className="leading-relaxed">{t.houseDoesNotFit}</span>
                     </div>
                   )}
-                  <Slider label={t.width} value={house.houseWidth} min={4} max={Math.max(30, house.plotWidth)} onChange={(v: number) => setHouseAndValidate({ houseWidth: v })} />
-                  <Slider label={t.length} value={house.houseLength} min={4} max={Math.max(30, house.plotLength)} onChange={(v: number) => setHouseAndValidate({ houseLength: v })} />
+                  <Slider unit={t.m} label={t.width} value={house.houseWidth} min={4} max={Math.max(30, house.plotWidth)} onChange={(v: number) => setHouseAndValidate({ houseWidth: v })} />
+                  <Slider unit={t.m} label={t.length} value={house.houseLength} min={4} max={Math.max(30, house.plotLength)} onChange={(v: number) => setHouseAndValidate({ houseLength: v })} />
                   <div className="flex bg-slate-100 p-0.5 lg:p-1 rounded-xl lg:rounded-2xl gap-0.5">{[1, 2, 3].map(n => (<button key={n} onClick={() => setHouse(p => ({...p, floors: n}))} className={`flex-1 py-1.5 lg:py-3 rounded-lg lg:rounded-xl font-black text-[10px] lg:text-[12px] uppercase transition-all ${house.floors === n ? 'bg-white text-slate-900 shadow-md' : 'text-slate-400'}`}>{n} {t.floors}</button>))}</div>
                   <div className="space-y-2 lg:space-y-3">
                     <button onClick={() => setHouse(p => ({ ...p, additions: [...p.additions, { id: Math.random().toString(36).substr(2, 9), width: 6, length: 6, floors: 1, posX: house.housePosX + 8, posZ: house.housePosZ, rotation: 0 }] }))} className="w-full py-2 lg:py-4 rounded-xl lg:rounded-2xl border-2 border-dashed border-slate-300 text-slate-400 font-black uppercase text-[9px] lg:text-[10px] hover:border-[#ff5f1f] hover:text-[#ff5f1f] transition-all">
@@ -1346,12 +1384,12 @@ const Controls: React.FC<ControlsProps> = ({
                     {house.additions.map((add, idx) => (
                       <div key={add.id} className="p-2 lg:p-4 bg-slate-50 border border-slate-100 rounded-xl lg:rounded-2xl space-y-2 lg:space-y-3">
                          <div className="flex justify-between items-center">
-                            <span className="text-[8px] lg:text-[9px] font-black uppercase text-slate-400">Пристройка {idx + 1}</span>
+                            <span className="text-[8px] lg:text-[9px] font-black uppercase text-slate-400">{t.extension} {idx + 1}</span>
                             <button onClick={() => setHouse(p => ({ ...p, additions: p.additions.filter(a => a.id !== add.id) }))} className="w-5 h-5 lg:w-7 lg:h-7 rounded-full bg-white shadow-sm flex items-center justify-center text-slate-300 hover:text-red-500 transition-all"><i className="fas fa-times text-[9px] lg:text-sm"></i></button>
                          </div>
-                         <Slider label={t.width} value={add.width} min={2} max={15} onChange={(v: number) => updateAddition(add.id, { width: v })} />
-                         <Slider label={t.length} value={add.length} min={2} max={15} onChange={(v: number) => updateAddition(add.id, { length: v })} />
-                         <div className="flex bg-slate-100 p-0.5 rounded-lg lg:rounded-xl gap-0.5">{[1, 2, 3].map(n => (<button key={n} onClick={() => updateAddition(add.id, { floors: n })} className={`flex-1 py-1 lg:py-1.5 rounded-md lg:rounded-lg text-[8px] lg:text-[9px] font-black transition-all ${add.floors === n ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-400'}`}>{n} эт</button>))}</div>
+                         <Slider unit={t.m} label={t.width} value={add.width} min={2} max={15} onChange={(v: number) => updateAddition(add.id, { width: v })} />
+                         <Slider unit={t.m} label={t.length} value={add.length} min={2} max={15} onChange={(v: number) => updateAddition(add.id, { length: v })} />
+                         <div className="flex bg-slate-100 p-0.5 rounded-lg lg:rounded-xl gap-0.5">{[1, 2, 3].map(n => (<button key={n} onClick={() => updateAddition(add.id, { floors: n })} className={`flex-1 py-1 lg:py-1.5 rounded-md lg:rounded-lg text-[8px] lg:text-[9px] font-black transition-all ${add.floors === n ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-400'}`}>{n} {t.floorsCount}</button>))}</div>
                          <div className="flex gap-1.5">
                            <button onClick={() => updateAddition(add.id, { rotation: add.rotation - ROTATION_STEP })} className="flex-1 py-1 lg:py-1.5 bg-slate-900 text-white rounded-md lg:rounded-lg text-[8px] lg:text-[9px] font-black"><i className="fas fa-undo mr-1"></i> -5°</button>
                            <button onClick={() => updateAddition(add.id, { rotation: add.rotation + ROTATION_STEP })} className="flex-1 py-1 lg:py-1.5 bg-slate-900 text-white rounded-md lg:rounded-lg text-[8px] lg:text-[9px] font-black"><i className="fas fa-redo mr-1"></i> +5°</button>
@@ -1375,13 +1413,13 @@ const Controls: React.FC<ControlsProps> = ({
                     return (
                       <div key={`floor-${fIdx}`} className="space-y-1.5 lg:space-y-3 border-b border-slate-800 pb-2 lg:pb-4 last:border-none last:pb-0">
                         <div className="flex justify-between items-center px-1">
-                          <span className="text-white font-black text-[9px] lg:text-[12px] uppercase">{floor.floorNumber} ЭТАЖ</span>
-                          <span className="text-[#ff5f1f] font-black text-[9px] lg:text-[12px]">{Math.round(floorArea)} м²</span>
+                          <span className="text-white font-black text-[9px] lg:text-[12px] uppercase">{floor.floorNumber} {t.floor}</span>
+                          <span className="text-[#ff5f1f] font-black text-[9px] lg:text-[12px]">{Math.round(floorArea)} {t.sqm.toLowerCase()}</span>
                         </div>
                         <div className="grid grid-cols-3 gap-1">
-                           <div className="bg-slate-800 p-1 lg:p-1.5 rounded-md lg:rounded-lg text-center"><span className="block text-[5px] lg:text-[6px] text-slate-400 uppercase">Стены 15%</span><span className="text-[8px] lg:text-[10px] text-white font-black">{Math.round(wallArea)}м²</span></div>
-                           <div className="bg-slate-800 p-1 lg:p-1.5 rounded-md lg:rounded-lg text-center"><span className="block text-[5px] lg:text-[6px] text-slate-400 uppercase">Холлы 9%</span><span className="text-[8px] lg:text-[10px] text-white font-black">{Math.round(hallArea)}м²</span></div>
-                           <div className="bg-slate-800 p-1 lg:p-1.5 rounded-md lg:rounded-lg text-center"><span className="block text-[5px] lg:text-[6px] text-slate-400 uppercase">Лестница</span><span className="text-[8px] lg:text-[10px] text-white font-black">{stairs}м²</span></div>
+                           <div className="bg-slate-800 p-1 lg:p-1.5 rounded-md lg:rounded-lg text-center"><span className="block text-[5px] lg:text-[6px] text-slate-400 uppercase">{t.walls15}</span><span className="text-[8px] lg:text-[10px] text-white font-black">{Math.round(wallArea)}{t.sqm.toLowerCase()}</span></div>
+                           <div className="bg-slate-800 p-1 lg:p-1.5 rounded-md lg:rounded-lg text-center"><span className="block text-[5px] lg:text-[6px] text-slate-400 uppercase">{t.halls9}</span><span className="text-[8px] lg:text-[10px] text-white font-black">{Math.round(hallArea)}{t.sqm.toLowerCase()}</span></div>
+                           <div className="bg-slate-800 p-1 lg:p-1.5 rounded-md lg:rounded-lg text-center"><span className="block text-[5px] lg:text-[6px] text-slate-400 uppercase">{t.stairs}</span><span className="text-[8px] lg:text-[10px] text-white font-black">{stairs}{t.sqm.toLowerCase()}</span></div>
                         </div>
                         <div className="space-y-1.5 lg:space-y-3">
                           {floor.rooms.map(room => (
@@ -1404,8 +1442,8 @@ const Controls: React.FC<ControlsProps> = ({
                               </div>
                               <div className="space-y-0.5 lg:space-y-1">
                                 <div className="flex justify-between items-center text-[7px] lg:text-[9px] uppercase font-black text-slate-500">
-                                   <span>Площадь</span>
-                                   <span className="text-white">{Math.round(room.area)} м²</span>
+                                   <span>{t.area}</span>
+                                   <span className="text-white">{Math.round(room.area)} {t.sqm.toLowerCase()}</span>
                                 </div>
                                 <input 
                                   type="range" 
@@ -1420,7 +1458,7 @@ const Controls: React.FC<ControlsProps> = ({
                             </div>
                           ))}
                           <button onClick={() => addRoom(fIdx)} className="w-full py-3 lg:py-2 border-2 border-dashed border-slate-700 text-slate-500 rounded-lg lg:rounded-xl text-[9px] lg:text-[9px] font-black uppercase hover:border-[#ff5f1f] hover:text-[#ff5f1f] transition-all pointer-events-auto relative z-10">
-                            <i className="fas fa-plus mr-1.5"></i> Добавить помещение
+                            <i className="fas fa-plus mr-1.5"></i> {t.addRoom}
                           </button>
                         </div>
                       </div>
@@ -1439,8 +1477,8 @@ const Controls: React.FC<ControlsProps> = ({
                   const { x, z, rotation } = getSmartPosition(p, 'pool', pW, pD);
                   return { ...p, hasPool: true, poolWidth: pW, poolDepth: pD, poolPosX: x, poolPosZ: z, poolRotation: rotation };
                 })}>
-                  <Slider label={t.width} value={house.poolWidth} min={3} max={15} onChange={(v: number) => setHouse(p => ({...p, poolWidth: v}))} />
-                  <Slider label={t.depth} value={house.poolDepth} min={2} max={10} onChange={(v: number) => setHouse(p => ({...p, poolDepth: v}))} />
+                  <Slider unit={t.m} label={t.width} value={house.poolWidth} min={3} max={15} onChange={(v: number) => setHouse(p => ({...p, poolWidth: v}))} />
+                  <Slider unit={t.m} label={t.depth} value={house.poolDepth} min={2} max={10} onChange={(v: number) => setHouse(p => ({...p, poolDepth: v}))} />
                   <div className="flex gap-2">
                     <button onClick={() => setHouse(p => ({...p, poolRotation: p.poolRotation - ROTATION_STEP}))} className="flex-1 py-3 bg-slate-100 rounded-xl font-black uppercase text-[10px]"><i className="fas fa-undo mr-2"></i> -5°</button>
                     <button onClick={() => setHouse(p => ({...p, poolRotation: p.poolRotation + ROTATION_STEP}))} className="flex-1 py-3 bg-slate-100 rounded-xl font-black uppercase text-[10px]"><i className="fas fa-redo mr-2"></i> +5°</button>
@@ -1456,8 +1494,8 @@ const Controls: React.FC<ControlsProps> = ({
                   const z = p.housePosZ + Math.cos(houseRot) * offset;
                   return { ...p, hasTerrace: true, terraceWidth: tW, terraceDepth: tD, terracePosX: x, terracePosZ: z, terraceRotation: houseRot };
                 })}>
-                  <Slider label={t.width} value={house.terraceWidth} min={3} max={15} onChange={(v: number) => setHouse(p => ({...p, terraceWidth: v}))} />
-                  <Slider label={t.depth} value={house.terraceDepth} min={3} max={10} onChange={(v: number) => setHouse(p => ({...p, terraceDepth: v}))} />
+                  <Slider unit={t.m} label={t.width} value={house.terraceWidth} min={3} max={15} onChange={(v: number) => setHouse(p => ({...p, terraceWidth: v}))} />
+                  <Slider unit={t.m} label={t.depth} value={house.terraceDepth} min={3} max={10} onChange={(v: number) => setHouse(p => ({...p, terraceDepth: v}))} />
                   <div className="flex gap-2">
                     <button onClick={() => setHouse(p => ({...p, terraceRotation: p.terraceRotation - ROTATION_STEP}))} className="flex-1 py-3 bg-slate-100 rounded-xl font-black uppercase text-[10px]"><i className="fas fa-undo mr-2"></i> -5°</button>
                     <button onClick={() => setHouse(p => ({...p, terraceRotation: p.terraceRotation + ROTATION_STEP}))} className="flex-1 py-3 bg-slate-100 rounded-xl font-black uppercase text-[10px]"><i className="fas fa-redo mr-2"></i> +5°</button>
@@ -1470,8 +1508,8 @@ const Controls: React.FC<ControlsProps> = ({
                   const { x, z, rotation } = getSmartPosition(p, 'bath', bW, bD);
                   return { ...p, hasBath: true, bathWidth: bW, bathDepth: bD, bathPosX: x, bathPosZ: z, bathRotation: rotation };
                 })}>
-                  <Slider label={t.width} value={house.bathWidth} min={3} max={12} onChange={(v: number) => setHouse(p => ({...p, bathWidth: v}))} />
-                  <Slider label={t.depth} value={house.bathDepth} min={3} max={12} onChange={(v: number) => setHouse(p => ({...p, bathDepth: v}))} />
+                  <Slider unit={t.m} label={t.width} value={house.bathWidth} min={3} max={12} onChange={(v: number) => setHouse(p => ({...p, bathWidth: v}))} />
+                  <Slider unit={t.m} label={t.depth} value={house.bathDepth} min={3} max={12} onChange={(v: number) => setHouse(p => ({...p, bathDepth: v}))} />
                   <div className="flex gap-2">
                     <button onClick={() => setHouse(p => ({...p, bathRotation: p.bathRotation - ROTATION_STEP}))} className="flex-1 py-3 bg-slate-100 rounded-xl font-black uppercase text-[10px]"><i className="fas fa-undo mr-2"></i> -5°</button>
                     <button onClick={() => setHouse(p => ({...p, bathRotation: p.bathRotation + ROTATION_STEP}))} className="flex-1 py-3 bg-slate-100 rounded-xl font-black uppercase text-[10px]"><i className="fas fa-redo mr-2"></i> +5°</button>
@@ -1484,8 +1522,8 @@ const Controls: React.FC<ControlsProps> = ({
                   const { x, z, rotation } = getSmartPosition(p, 'bbq', bW, bD);
                   return { ...p, hasBBQ: true, bbqWidth: bW, bbqDepth: bD, bbqPosX: x, bbqPosZ: z, bbqRotation: rotation };
                 })}>
-                  <Slider label={t.width} value={house.bbqWidth} min={2} max={8} onChange={(v: number) => setHouse(p => ({...p, bbqWidth: v}))} />
-                  <Slider label={t.depth} value={house.bbqDepth} min={2} max={8} onChange={(v: number) => setHouse(p => ({...p, bbqDepth: v}))} />
+                  <Slider unit={t.m} label={t.width} value={house.bbqWidth} min={2} max={8} onChange={(v: number) => setHouse(p => ({...p, bbqWidth: v}))} />
+                  <Slider unit={t.m} label={t.depth} value={house.bbqDepth} min={2} max={8} onChange={(v: number) => setHouse(p => ({...p, bbqDepth: v}))} />
                   <div className="flex gap-2">
                     <button onClick={() => setHouse(p => ({...p, bbqRotation: p.bbqRotation - ROTATION_STEP}))} className="flex-1 py-3 bg-slate-100 rounded-xl font-black uppercase text-[10px]"><i className="fas fa-undo mr-2"></i> -5°</button>
                     <button onClick={() => setHouse(p => ({...p, bbqRotation: p.bbqRotation + ROTATION_STEP}))} className="flex-1 py-3 bg-slate-100 rounded-xl font-black uppercase text-[10px]"><i className="fas fa-redo mr-2"></i> +5°</button>
@@ -1498,8 +1536,8 @@ const Controls: React.FC<ControlsProps> = ({
                   const { x, z, rotation } = getSmartPosition(p, 'customObj', cW, cD);
                   return { ...p, hasCustomObj: true, customObjWidth: cW, customObjDepth: cD, customObjPosX: x, customObjPosZ: z, customObjRotation: rotation };
                 })}>
-                  <Slider label={t.width} value={house.customObjWidth} min={2} max={10} onChange={(v: number) => setHouse(p => ({...p, customObjWidth: v}))} />
-                  <Slider label={t.depth} value={house.customObjDepth} min={2} max={10} onChange={(v: number) => setHouse(p => ({...p, customObjDepth: v}))} />
+                  <Slider unit={t.m} label={t.width} value={house.customObjWidth} min={2} max={10} onChange={(v: number) => setHouse(p => ({...p, customObjWidth: v}))} />
+                  <Slider unit={t.m} label={t.depth} value={house.customObjDepth} min={2} max={10} onChange={(v: number) => setHouse(p => ({...p, customObjDepth: v}))} />
                   <div className="flex gap-2">
                     <button onClick={() => setHouse(p => ({...p, customObjRotation: p.customObjRotation - ROTATION_STEP}))} className="flex-1 py-3 bg-slate-100 rounded-xl font-black uppercase text-[10px]"><i className="fas fa-undo mr-2"></i> -5°</button>
                     <button onClick={() => setHouse(p => ({...p, customObjRotation: p.customObjRotation + ROTATION_STEP}))} className="flex-1 py-3 bg-slate-100 rounded-xl font-black uppercase text-[10px]"><i className="fas fa-redo mr-2"></i> +5°</button>
@@ -1524,7 +1562,7 @@ const Controls: React.FC<ControlsProps> = ({
                         }))} 
                         className={`flex-1 py-2 lg:py-4 rounded-lg lg:rounded-xl text-[10px] lg:text-[12px] font-black uppercase ${house.garageCars === n ? 'bg-slate-900 text-white shadow-md' : 'bg-slate-100 text-slate-400'}`}
                       >
-                        {n} {n === 1 ? 'машина' : (n < 5 ? 'машины' : 'машин')}
+                        {n} {n === 1 ? t.car1 : (n < 5 ? t.car2_4 : t.car5)}
                       </button>
                     ))}
                   </div>
@@ -1553,7 +1591,7 @@ const Controls: React.FC<ControlsProps> = ({
                         }))} 
                         className={`flex-1 py-2 lg:py-4 rounded-lg lg:rounded-xl text-[10px] lg:text-[12px] font-black uppercase ${house.carportCars === n ? 'bg-slate-900 text-white shadow-md' : 'bg-slate-100 text-slate-400'}`}
                       >
-                        {n} {n === 1 ? 'машина' : (n < 5 ? 'машины' : 'машин')}
+                        {n} {n === 1 ? t.car1 : (n < 5 ? t.car2_4 : t.car5)}
                       </button>
                     ))}
                   </div>
@@ -1569,13 +1607,13 @@ const Controls: React.FC<ControlsProps> = ({
             {currentStep === 3 && (
               <div className="space-y-4 lg:space-y-6 animate-in fade-in duration-500 pb-6 lg:pb-10">
                 <div className="bg-white rounded-[24px] lg:rounded-[32px] p-4 lg:p-6 border shadow-lg space-y-3 lg:space-y-4">
-                  <h4 className="text-[9px] lg:text-[11px] font-black uppercase text-slate-400 tracking-widest">ФАЙЛЫ И ПОЖЕЛАНИЯ</h4>
-                  <textarea value={house.extraWishes} onChange={e => setHouse(p => ({...p, extraWishes: e.target.value}))} className="w-full bg-slate-50 border border-slate-100 rounded-xl lg:rounded-2xl px-3 lg:px-4 py-2 lg:py-3 text-[12px] lg:text-[14px] font-bold min-h-[80px] lg:min-h-[120px]" placeholder="Дополнительные пожелания..." />
+                  <h4 className="text-[9px] lg:text-[11px] font-black uppercase text-slate-400 tracking-widest">{t.filesAndWishes}</h4>
+                  <textarea value={house.extraWishes} onChange={e => setHouse(p => ({...p, extraWishes: e.target.value}))} className="w-full bg-slate-50 border border-slate-100 rounded-xl lg:rounded-2xl px-3 lg:px-4 py-2 lg:py-3 text-[12px] lg:text-[14px] font-bold min-h-[80px] lg:min-h-[120px]" placeholder={t.extraWishesPlaceholder} />
                   
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 lg:gap-3">
                     <label className="py-3 lg:py-4 bg-slate-100 text-slate-900 rounded-xl lg:rounded-2xl font-black uppercase text-[10px] lg:text-[11px] flex items-center justify-center gap-2 cursor-pointer hover:bg-slate-200 transition-all lg:col-span-2">
                       <i className="fas fa-upload text-[12px] lg:text-base"></i>
-                      ЗАГРУЗИТЬ СВОИ ФАЙЛЫ
+                      {t.uploadYourFiles}
                       <input 
                         type="file" 
                         multiple 
@@ -1600,7 +1638,7 @@ const Controls: React.FC<ControlsProps> = ({
 
                   {house.projectFiles.length > 0 && (
                     <div className="pt-2 space-y-1">
-                      <p className="text-[8px] font-black text-slate-400 uppercase">Загруженные файлы ({house.projectFiles.length})</p>
+                      <p className="text-[8px] font-black text-slate-400 uppercase">{t.uploadedFiles} ({house.projectFiles.length})</p>
                       <div className="flex flex-wrap gap-1">
                         {house.projectFiles.map((f, i) => (
                           <div key={i} className="bg-slate-50 px-2 py-1 rounded-md text-[9px] font-bold flex items-center gap-1 border border-slate-100">
@@ -1614,14 +1652,14 @@ const Controls: React.FC<ControlsProps> = ({
                 </div>
                 <div className="bg-white rounded-[24px] lg:rounded-[32px] p-4 lg:p-6 border shadow-lg space-y-3 lg:space-y-4">
                   <div className="space-y-1">
-                    <p className="text-[10px] lg:text-[12px] font-black text-[#ff5f1f] uppercase tracking-widest">для получения расчетов напиши свою почту и нажми на ПДФ</p>
+                    <p className="text-[10px] lg:text-[12px] font-black text-[#ff5f1f] uppercase tracking-widest">{t.enterEmailForCalc}</p>
                   </div>
                   <input 
                     type="tel" 
                     value={house.userPhone} 
                     onChange={e => setHouse(p => ({...p, userPhone: e.target.value}))} 
                     className="w-full bg-slate-50 border border-slate-100 rounded-lg lg:rounded-xl px-3 lg:px-4 py-3 lg:py-4 text-[14px] lg:text-[16px] font-bold outline-none focus:border-[#ff5f1f] transition-all" 
-                    placeholder="Ваш Телефон..." 
+                    placeholder={t.yourPhonePlaceholder} 
                   />
                   
                   {house.userEmail && house.userAvatar ? (
@@ -1635,7 +1673,7 @@ const Controls: React.FC<ControlsProps> = ({
                         onClick={() => setHouse(p => ({...p, userEmail: '', userName: '', userAvatar: ''}))}
                         className="text-slate-400 hover:text-red-500 text-[10px] uppercase font-bold px-2 py-1"
                       >
-                        Выйти
+                        {t.exit}
                       </button>
                     </div>
                   ) : (
@@ -1644,7 +1682,7 @@ const Controls: React.FC<ControlsProps> = ({
                       className="w-full py-3 lg:py-4 bg-white border border-slate-200 text-slate-700 rounded-xl lg:rounded-2xl font-black uppercase text-[10px] lg:text-[11px] flex items-center justify-center gap-2 hover:bg-slate-50 transition-all shadow-sm"
                     >
                       <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" className="w-4 h-4" />
-                      Войти через Google
+                      {t.loginWithGoogle}
                     </button>
                   )}
 
@@ -1654,7 +1692,7 @@ const Controls: React.FC<ControlsProps> = ({
                       value={house.userEmail} 
                       onChange={e => setHouse(p => ({...p, userEmail: e.target.value}))} 
                       className={`w-full bg-slate-50 border rounded-lg lg:rounded-xl px-3 lg:px-4 py-3 lg:py-4 text-[14px] lg:text-[16px] font-bold outline-none transition-all ${house.userEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(house.userEmail) ? 'border-red-300 bg-red-50' : 'border-slate-100 focus:border-[#ff5f1f]'}`} 
-                      placeholder="Ваш Email..." 
+                      placeholder={t.yourEmailPlaceholder} 
                     />
                   )}
                   <div className="space-y-3">
@@ -1663,28 +1701,28 @@ const Controls: React.FC<ControlsProps> = ({
                       disabled={!house.userEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(house.userEmail)}
                       className="w-full py-3 lg:py-4 bg-[#ff5f1f] text-white hover:bg-[#e04d14] transition-colors rounded-xl lg:rounded-2xl font-black uppercase text-[10px] lg:text-[11px] flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      <i className={`fas ${isDownloadingPassport ? 'fa-spinner fa-spin' : 'fa-file-pdf'} text-[12px] lg:text-base`}></i>ПАСПОРТ PDF
+                      <i className={`fas ${isDownloadingPassport ? 'fa-spinner fa-spin' : 'fa-file-pdf'} text-[12px] lg:text-base`}></i>{t.passportPdf}
                     </button>
                     <button 
                       onClick={() => { handlePreviewCalculation(); if(house.userEmail) handleOrderSilent(); }} 
                       disabled={!house.userEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(house.userEmail)}
                       className="w-full py-3 lg:py-4 bg-[#ff5f1f] text-white hover:bg-[#e04d14] transition-colors rounded-xl lg:rounded-2xl font-black uppercase text-[10px] lg:text-[11px] flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      <i className={`fas ${isDownloadingCalc ? 'fa-spinner fa-spin' : 'fa-file-invoice-dollar'} text-[12px] lg:text-base`}></i>Стоимость проектирования
+                      <i className={`fas ${isDownloadingCalc ? 'fa-spinner fa-spin' : 'fa-file-invoice-dollar'} text-[12px] lg:text-base`}></i>{t.designCostPdf}
                     </button>
                     <button 
                       onClick={() => { handlePreviewEstimate(); if(house.userEmail) handleOrderSilent(); }} 
                       disabled={!house.userEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(house.userEmail)}
                       className="w-full py-3 lg:py-4 bg-[#ff5f1f] text-white hover:bg-[#e04d14] transition-colors rounded-xl lg:rounded-2xl font-black uppercase text-[10px] lg:text-[11px] flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      <i className={`fas ${isDownloadingEstimate ? 'fa-spinner fa-spin' : 'fa-file-invoice'} text-[12px] lg:text-base`}></i>Стоимость строительства
+                      <i className={`fas ${isDownloadingEstimate ? 'fa-spinner fa-spin' : 'fa-file-invoice'} text-[12px] lg:text-base`}></i>{t.constructionCostPdf}
                     </button>
                     <button 
                       onClick={() => { handleSendToTelegram(); if(house.userEmail) handleOrderSilent(); }}
                       disabled={isSendingTelegram || !house.userPhone || !house.userEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(house.userEmail)}
                       className="w-full py-3 lg:py-4 bg-[#0088cc] text-white rounded-xl lg:rounded-2xl font-black uppercase text-[10px] lg:text-[11px] flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#0077b3] transition-all"
                     >
-                      <i className={`fab ${isSendingTelegram ? 'fa-spinner fa-spin' : 'fa-telegram-plane'} text-[12px] lg:text-base`}></i>Получить в Telegram
+                      <i className={`fab ${isSendingTelegram ? 'fa-spinner fa-spin' : 'fa-telegram-plane'} text-[12px] lg:text-base`}></i>{t.getInTelegram}
                     </button>
                   </div>
                   {orderError && (
@@ -1698,11 +1736,11 @@ const Controls: React.FC<ControlsProps> = ({
           <div className="flex flex-row gap-3 shrink-0 pt-4 border-t border-slate-100">
              {currentStep < 3 && (
                <>
-                 <button onClick={handleContinue} className={`hidden lg:flex flex-[2] py-6 bg-[#0f172a] text-white rounded-[32px] text-[12px] font-black uppercase items-center justify-center gap-3 active:scale-95 shadow-xl transition-all ${currentStep === 2 || isNextStepFlashing ? 'animate-pulse-orange ring-4 ring-[#ff5f1f]' : ''}`}>ДАЛЕЕ <i className="fas fa-chevron-right text-[10px]"></i></button>
-                 <button onClick={() => setIsMobileExpanded(false)} className={`lg:hidden flex-[2] py-6 bg-[#0f172a] text-white rounded-[32px] text-[12px] font-black uppercase items-center justify-center active:scale-95 shadow-xl transition-all ${isNextStepFlashing ? 'animate-pulse-orange ring-2 ring-[#ff5f1f]' : ''}`}>ПРИМЕНИТЬ</button>
+                 <button onClick={handleContinue} className={`hidden lg:flex flex-[2] py-6 bg-[#0f172a] text-white rounded-[32px] text-[12px] font-black uppercase items-center justify-center gap-3 active:scale-95 shadow-xl transition-all ${currentStep === 2 || isNextStepFlashing ? 'animate-pulse-orange ring-4 ring-[#ff5f1f]' : ''}`}>{t.next} <i className="fas fa-chevron-right text-[10px]"></i></button>
+                 <button onClick={() => setIsMobileExpanded(false)} className={`lg:hidden flex-[2] py-6 bg-[#0f172a] text-white rounded-[32px] text-[12px] font-black uppercase items-center justify-center active:scale-95 shadow-xl transition-all ${isNextStepFlashing ? 'animate-pulse-orange ring-2 ring-[#ff5f1f]' : ''}`}>{t.apply}</button>
                </>
              )}
-             {currentStep === 3 && <button onClick={() => setIsMobileExpanded(false)} className="flex-1 py-6 bg-[#ff5f1f] text-white rounded-[32px] text-[12px] font-black uppercase flex items-center justify-center active:scale-95 shadow-xl">ВЕРНУТЬСЯ В 3D</button>}
+             {currentStep === 3 && <button onClick={() => setIsMobileExpanded(false)} className="flex-1 py-6 bg-[#ff5f1f] text-white rounded-[32px] text-[12px] font-black uppercase flex items-center justify-center active:scale-95 shadow-xl">{t.returnTo3D}</button>}
           </div>
         </div>
       </div>
@@ -1739,7 +1777,7 @@ const Controls: React.FC<ControlsProps> = ({
                 }}
                 className="px-4 lg:px-6 py-2.5 bg-[#ff5f1f] text-white rounded-xl font-black uppercase text-[10px] lg:text-[12px] hover:bg-[#e04d14] flex items-center gap-2 transition-colors shadow-lg"
               >
-                <i className="fas fa-download"></i> <span className="hidden lg:inline">Скачать PDF</span>
+                <i className="fas fa-download"></i> <span className="hidden lg:inline">{t.downloadPdf}</span>
               </button>
               <button 
                 onClick={() => {
@@ -1756,8 +1794,8 @@ const Controls: React.FC<ControlsProps> = ({
           </div>
           <div 
             ref={pdfContainerRef}
-            className={`flex-1 overflow-auto p-4 lg:p-8 relative ${isPdfDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
-            style={{ touchAction: 'pinch-zoom' }}
+            className={`flex-1 overflow-auto p-4 lg:p-8 relative overscroll-none ${isPdfDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
+            style={{ touchAction: 'pan-x pan-y' }}
             onPointerDown={(e) => {
               setIsPdfDragging(true);
               setPdfDragStart({ x: e.clientX, y: e.clientY });
@@ -1777,6 +1815,7 @@ const Controls: React.FC<ControlsProps> = ({
             }}
             onPointerUp={() => setIsPdfDragging(false)}
             onPointerLeave={() => setIsPdfDragging(false)}
+            onPointerCancel={() => setIsPdfDragging(false)}
           >
             <div className="min-h-full min-w-full flex items-center justify-center m-auto">
               <img 

@@ -91,7 +91,7 @@ const INITIAL_STATE: HouseState = {
   terracePosZ: -8,
   terraceRotation: 0,
   hasBBQ: false,
-  bbqLabel: "Зона BBQ",
+  bbqLabel: "BBQ Area",
   bbqWidth: 3.5,
   bbqDepth: 3.5,
   bbqPosX: -8,
@@ -123,7 +123,7 @@ const INITIAL_STATE: HouseState = {
   carportPosZ: 15,
   carportRotation: 0,
   hasCustomObj: false,
-  customObjLabel: "Хозблок",
+  customObjLabel: "Storage",
   customObjWidth: 4,
   customObjDepth: 3,
   customObjPosX: 0,
@@ -236,21 +236,23 @@ const App: React.FC = () => {
 
   return (
     <div className="relative w-full h-screen bg-white overflow-hidden">
-      {/* Global Projects Button */}
-      <button 
-        onClick={() => setIsProjectsModalOpen(true)}
-        className={`absolute z-50 bg-white/90 backdrop-blur-sm border shadow-sm hover:shadow-md px-4 py-2 rounded-xl font-bold text-sm flex items-center gap-2 transition-all text-slate-700 hover:text-blue-600 ${
-          hasStarted ? 'top-4 right-4 lg:right-[620px] lg:top-6' : 'top-4 right-4 lg:top-6 lg:right-6'
-        }`}
-      >
-        <i className="fas fa-folder-open"></i>
-        {house.lang === 'ru' ? 'Мои проекты' : 'My Projects'}
-      </button>
+      {/* Global Projects Button (Only on last page now) */}
+      {(hasStarted && currentStep === 3) && (
+        <button 
+          onClick={() => setIsProjectsModalOpen(true)}
+          className={`absolute z-[9999] bg-white/90 backdrop-blur-sm border shadow-sm hover:shadow-md px-4 py-2 rounded-xl font-bold text-sm flex items-center gap-2 transition-all text-slate-700 hover:text-blue-600 top-20 right-4 lg:right-[620px] lg:top-6`}
+        >
+          <i className="fas fa-folder-open"></i>
+          <span className="hidden sm:inline">{getTranslation(house.lang).myProjects}</span>
+          <span className="sm:hidden text-xs">{getTranslation(house.lang).myProjects}</span>
+        </button>
+      )}
 
       <ProjectsModal 
         isOpen={isProjectsModalOpen} 
         onClose={() => setIsProjectsModalOpen(false)} 
         currentHouse={house}
+        hasStarted={hasStarted}
         onLoadProject={(loadedHouse) => {
           setHouse(loadedHouse);
           setHasStarted(true);
@@ -259,7 +261,7 @@ const App: React.FC = () => {
 
       {!hasStarted ? (
         <>
-          <WelcomeScreen onStart={handleStart} existingData={house} onLangChange={changeLang} />
+          <WelcomeScreen onStart={handleStart} existingData={house} onLangChange={changeLang} onOpenProjects={() => setIsProjectsModalOpen(true)} />
           <Assistant step={-1} isWelcome={true} lang={house.lang} />
         </>
       ) : (

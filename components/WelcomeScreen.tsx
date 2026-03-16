@@ -2,49 +2,53 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { HouseState, HouseType, Language } from '../types';
 import { getTranslation } from '../services/i18n';
+import { auth } from '../firebase';
+import { onAuthStateChanged } from 'firebase/auth';
 
 interface WelcomeScreenProps {
   onStart: (initialConfig: Partial<HouseState>) => void;
   existingData?: Partial<HouseState>;
   onLangChange: (lang: Language) => void;
+  onOpenProjects: () => void;
 }
 
 const LOGO_URL = "https://raw.githubusercontent.com/phparametric-cmd/ph/3a1686781dd89eb77cf6f7ca10c15c739ae48eff/Ph.jpeg";
 
-const STYLES: { type: HouseType; label: string; description: string; image: string; colors: any }[] = [
-  { 
-    type: 'Modern Minimalism', 
-    label: 'MINIMALISM', 
-    description: 'Чистые линии, панорамное остекление и максимум свободного пространства.',
-    image: 'https://raw.githubusercontent.com/phparametric-cmd/ph/0cc86e105a5cb0cd8fdc0071139b1e5ad51cd924/%D1%81%D0%BE%D0%B2%D1%80%D0%B5%D0%BC%D0%B5%D0%BD%D0%BD%D1%8B%D0%B9%20%D0%BC%D0%B8%D0%BD%D0%B8%D0%BC%D0%B0%D0%BB%D0%B8%D0%B7%D0%BC%20.jpeg',
-    colors: { wall: "#ffffff", roof: "#0f172a", roofType: "flat", door: "#1e1e1e" }
-  },
-  { 
-    type: 'Modern Classics', 
-    label: 'CLASSICS', 
-    description: 'Симметрия, изысканные фасадные элементы и вневременная элегантность.',
-    image: 'https://raw.githubusercontent.com/phparametric-cmd/ph/760dc73689ca781952b348fbb0f8e4d02027b9e7/Classical%20.jpeg',
-    colors: { wall: "#f8fafc", roof: "#334155", roofType: "hipped", door: "#1e1b4b" }
-  },
-  { 
-    type: 'Wright Style', 
-    label: 'WRIGHT', 
-    description: 'Органическая архитектура с выраженными горизонтальными линиями и широкими свесами.',
-    image: 'https://raw.githubusercontent.com/phparametric-cmd/ph/760dc73689ca781952b348fbb0f8e4d02027b9e7/%D0%A0%D0%B0%D0%B9%D1%82%20.jpeg',
-    colors: { wall: "#a8a29e", roof: "#451a03", roofType: "hipped", door: "#1e1e1e" }
-  },
-  { 
-    type: 'Industrial', 
-    label: 'INDUSTRIAL', 
-    description: 'Грубые фактуры, открытые конструктивные элементы и лофт-эстетика.',
-    image: 'https://raw.githubusercontent.com/phparametric-cmd/ph/0cc86e105a5cb0cd8fdc0071139b1e5ad51cd924/%D0%A1%D0%BE%D0%B2%D1%80%D0%B5%D0%BC%D0%B5%D0%BD%D0%BD%D1%8B%D0%B9%20%D0%B4%D0%BE%D0%BC.jpeg',
-    colors: { wall: "#94a3b8", roof: "#1e1e1e", roofType: "flat", door: "#000" }
-  }
-];
-
-const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onStart, existingData, onLangChange }) => {
+const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onStart, existingData, onLangChange, onOpenProjects }) => {
   const currentLang = existingData?.lang || 'ru';
   const t = getTranslation(currentLang);
+
+  const STYLES: { type: HouseType; label: string; description: string; image: string; colors: any }[] = [
+    { 
+      type: 'Modern Minimalism', 
+      label: 'MINIMALISM', 
+      description: t.styles.minimalism,
+      image: 'https://raw.githubusercontent.com/phparametric-cmd/ph/0cc86e105a5cb0cd8fdc0071139b1e5ad51cd924/%D1%81%D0%BE%D0%B2%D1%80%D0%B5%D0%BC%D0%B5%D0%BD%D0%BD%D1%8B%D0%B9%20%D0%BC%D0%B8%D0%BD%D0%B8%D0%BC%D0%B0%D0%BB%D0%B8%D0%B7%D0%BC%20.jpeg',
+      colors: { wall: "#ffffff", roof: "#0f172a", roofType: "flat", door: "#1e1e1e" }
+    },
+    { 
+      type: 'Modern Classics', 
+      label: 'CLASSICS', 
+      description: t.styles.classics,
+      image: 'https://raw.githubusercontent.com/phparametric-cmd/ph/760dc73689ca781952b348fbb0f8e4d02027b9e7/Classical%20.jpeg',
+      colors: { wall: "#f8fafc", roof: "#334155", roofType: "hipped", door: "#1e1b4b" }
+    },
+    { 
+      type: 'Wright Style', 
+      label: 'WRIGHT', 
+      description: t.styles.wright,
+      image: 'https://raw.githubusercontent.com/phparametric-cmd/ph/760dc73689ca781952b348fbb0f8e4d02027b9e7/%D0%A0%D0%B0%D0%B9%D1%82%20.jpeg',
+      colors: { wall: "#a8a29e", roof: "#451a03", roofType: "hipped", door: "#1e1e1e" }
+    },
+    { 
+      type: 'Industrial', 
+      label: 'INDUSTRIAL', 
+      description: t.styles.loft,
+      image: 'https://raw.githubusercontent.com/phparametric-cmd/ph/0cc86e105a5cb0cd8fdc0071139b1e5ad51cd924/%D0%A1%D0%BE%D0%B2%D1%80%D0%B5%D0%BC%D0%B5%D0%BD%D0%BD%D1%8B%D0%B9%20%D0%B4%D0%BE%D0%BC.jpeg',
+      colors: { wall: "#94a3b8", roof: "#1e1e1e", roofType: "flat", door: "#000" }
+    }
+  ];
+
   const containerRef = useRef<HTMLDivElement>(null);
 
   const [activeTab, setActiveTab] = useState<'preset' | 'custom'>('preset');
@@ -73,8 +77,6 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onStart, existingData, on
     }
   };
 
-  const [authUrl, setAuthUrl] = useState<string>('');
-
   useEffect(() => {
     try {
       const storedUser = localStorage.getItem('ph_user_info');
@@ -95,34 +97,27 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onStart, existingData, on
     };
     window.addEventListener('message', handleMessage);
 
-    const redirectUri = `${window.location.origin}/api/auth/callback`;
-    fetch(`/api/auth/url?redirectUri=${encodeURIComponent(redirectUri)}`)
-      .then(res => res.json())
-      .then(data => {
-        if (data.url) setAuthUrl(data.url);
-      })
-      .catch(err => console.error('Failed to prefetch auth URL:', err));
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        if (user.displayName) setUserName(user.displayName);
+        if (user.email) setUserEmail(user.email);
+      }
+    });
 
-    return () => window.removeEventListener('message', handleMessage);
+    return () => {
+      window.removeEventListener('message', handleMessage);
+      unsubscribe();
+    };
   }, []);
 
-  const handleGoogleLogin = () => {
-    if (!authUrl) {
-      alert('URL для авторизации еще загружается. Пожалуйста, подождите секунду и попробуйте снова.');
-      return;
-    }
-
+  const handleGoogleLogin = async () => {
     try {
-      // Открываем окно синхронно с уже готовым URL
-      const authWindow = window.open(authUrl, '_blank', 'width=600,height=700');
-      
-      if (!authWindow) {
-        // Если окно заблокировано, перенаправляем текущее окно
-        window.location.href = authUrl;
-      }
+      const { signInWithPopup, GoogleAuthProvider } = await import('firebase/auth');
+      const provider = new GoogleAuthProvider();
+      await signInWithPopup(auth, provider);
     } catch (error: any) {
       console.error('OAuth error:', error);
-      alert(`Ошибка при попытке авторизации: ${error.message || error}`);
+      alert(`${t.authError} ${error.message || error}`);
     }
   };
 
@@ -172,7 +167,15 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onStart, existingData, on
            <img src={LOGO_URL} className="w-6 h-6 rounded shadow-sm object-cover" alt="PH Logo" />
            <span className="font-black text-[9px] uppercase tracking-widest text-slate-900 leading-none">PH HOME</span>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 items-center">
+           <button 
+             onClick={onOpenProjects}
+             className="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-[10px] font-black transition-all flex items-center gap-1.5"
+           >
+             <i className="fas fa-folder-open"></i>
+             <span className="hidden sm:inline">{t.myProjects}</span>
+             <span className="sm:hidden">{t.myProjects}</span>
+           </button>
            {(['ru', 'en', 'kk'] as Language[]).map(l => (
              <button 
                key={l}
@@ -203,17 +206,17 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onStart, existingData, on
                        className="w-full bg-white border border-slate-200 rounded-lg px-4 py-2.5 flex items-center justify-center gap-2 hover:bg-slate-50 transition-colors shadow-sm"
                      >
                        <img src="https://www.google.com/favicon.ico" alt="Google" className="w-4 h-4" />
-                       <span className="text-[12px] font-bold text-slate-700">Войти через Google</span>
+                       <span className="text-[12px] font-bold text-slate-700">{t.loginWithGoogle}</span>
                      </button>
                      <div className="flex items-center gap-2 py-1">
                        <div className="h-px bg-slate-200 flex-1"></div>
-                       <span className="text-[10px] text-slate-400 font-bold uppercase">Или введите данные</span>
+                       <span className="text-[10px] text-slate-400 font-bold uppercase">{t.orEnterData}</span>
                        <div className="h-px bg-slate-200 flex-1"></div>
                      </div>
                    </>
                  )}
                  <input type="text" value={userName} onChange={e => setUserName(e.target.value)} placeholder={t.namePlaceholder} className="w-full bg-slate-50 border border-slate-100 rounded-lg px-4 py-2.5 text-[16px] focus:border-[#ff5f1f] outline-none font-bold shadow-sm select-text" />
-                 <input type="tel" value={userPhone} onChange={handlePhoneChange} placeholder={userEmail ? "Телефон (необязательно)" : t.phonePlaceholder} className="w-full bg-slate-50 border border-slate-100 rounded-lg px-4 py-2.5 text-[16px] focus:border-[#ff5f1f] outline-none font-bold shadow-sm select-text" />
+                 <input type="tel" value={userPhone} onChange={handlePhoneChange} placeholder={userEmail ? t.phoneOptional : t.phonePlaceholder} className="w-full bg-slate-50 border border-slate-100 rounded-lg px-4 py-2.5 text-[16px] focus:border-[#ff5f1f] outline-none font-bold shadow-sm select-text" />
                  {userEmail && (
                    <div className="text-[10px] text-slate-500 font-medium text-center">
                      Email: {userEmail}
@@ -222,10 +225,10 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onStart, existingData, on
               </div>
 
               <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 space-y-3">
-                 <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest text-center">Режим выбора участка</p>
+                 <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest text-center">{t.plotSelectionMode}</p>
                  <div className="flex bg-white p-1 rounded-lg gap-1 border border-slate-100">
-                    <button onClick={() => setIsMapMode(true)} className={`flex-1 py-2 rounded-md text-[10px] font-black transition-all ${isMapMode ? 'bg-[#ff5f1f] text-white shadow-sm' : 'text-slate-400'}`}><i className="fas fa-map-marker-alt mr-1"></i>НА КАРТЕ</button>
-                    <button onClick={() => setIsMapMode(false)} className={`flex-1 py-2 rounded-md text-[10px] font-black transition-all ${!isMapMode ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-400'}`}>ОБЫЧНЫЙ</button>
+                    <button onClick={() => setIsMapMode(true)} className={`flex-1 py-2 rounded-md text-[10px] font-black transition-all ${isMapMode ? 'bg-[#ff5f1f] text-white shadow-sm' : 'text-slate-400'}`}><i className="fas fa-map-marker-alt mr-1"></i>{t.onMap}</button>
+                    <button onClick={() => setIsMapMode(false)} className={`flex-1 py-2 rounded-md text-[10px] font-black transition-all ${!isMapMode ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-400'}`}>{t.normalMode}</button>
                  </div>
               </div>
 
@@ -250,7 +253,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onStart, existingData, on
               </div>
               <div className="flex items-center gap-2 bg-orange-50 px-3 py-1.5 rounded-full border border-orange-100 animate-pulse">
                 <i className="fas fa-lightbulb text-[#ff5f1f] text-[10px]"></i>
-                <span className="text-[9px] font-black text-[#ff5f1f] uppercase tracking-wider">Выбери архитектурный стиль своего будущего дома</span>
+                <span className="text-[9px] font-black text-[#ff5f1f] uppercase tracking-wider">{t.chooseStyle}</span>
               </div>
             </div>
 
@@ -294,14 +297,14 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onStart, existingData, on
                       <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center shadow-xl mx-auto mb-6 group-hover:scale-110 transition-transform">
                         <i className="fas fa-plus text-[#ff5f1f] text-2xl"></i>
                       </div>
-                      <span className="text-[12px] font-black uppercase block tracking-[0.2em] text-slate-400 group-hover:text-[#ff5f1f]">Загрузить референс</span>
+                      <span className="text-[12px] font-black uppercase block tracking-[0.2em] text-slate-400 group-hover:text-[#ff5f1f]">{t.uploadReference}</span>
                     </div>
                   )}
                   <input type="file" onChange={handleFileChange} accept="image/*" className="hidden" />
                 </label>
                 <div className="flex flex-col gap-4">
                    <div className="bg-slate-50 p-8 rounded-[40px] border border-slate-100 flex-1 shadow-inner">
-                      <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Пожелания по стилю</h4>
+                      <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">{t.styleWishes}</h4>
                       <textarea 
                         value={customStyleDesc} 
                         onChange={e => setCustomStyleDesc(e.target.value)} 

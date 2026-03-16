@@ -27,7 +27,7 @@ interface SceneProps {
   setIsMobileExpanded?: (val: boolean) => void;
 }
 
-const MiniSlider = ({ label, value, min, max, onChange, unit = "м" }: any) => (
+const MiniSlider = ({ label, value, min, max, onChange, unit = "m" }: any) => (
   <div className="space-y-1 w-full pointer-events-auto">
     <div className="flex justify-between items-center px-0.5">
       <span className="text-[10px] font-black text-slate-400 uppercase tracking-tight">{label}</span>
@@ -118,7 +118,7 @@ const ObjectSettingsOverlay = ({ id, house, setHouse, onClose, t, isXFlashing }:
   let cars = 0;
 
   if (id === 'house') {
-    label = "Дом";
+    label = t.scene?.house || "Дом";
     width = house.houseWidth;
     depth = house.houseLength;
     rotation = house.houseRotation;
@@ -126,7 +126,7 @@ const ObjectSettingsOverlay = ({ id, house, setHouse, onClose, t, isXFlashing }:
     const addId = id.replace('add_', '');
     const add = house.additions.find((a: any) => a.id === addId);
     if (add) {
-      label = `Пристройка`;
+      label = t.scene?.addition || "Пристройка";
       width = add.width;
       depth = add.length;
       rotation = add.rotation;
@@ -186,7 +186,7 @@ const ObjectSettingsOverlay = ({ id, house, setHouse, onClose, t, isXFlashing }:
         {!isGarageOrCarport && (
           <>
             <div className="space-y-0.5">
-              <MiniSlider label="Ширина" value={width} min={2} max={25} onChange={(v: any) => {
+              <MiniSlider label={t.scene?.width || "Ширина"} value={width} min={2} max={25} unit={t.m} onChange={(v: any) => {
                 if (id === 'house') handleUpdate({ houseWidth: v });
                 else if (id.startsWith('add_')) {
                   const addId = id.replace('add_', '');
@@ -196,7 +196,7 @@ const ObjectSettingsOverlay = ({ id, house, setHouse, onClose, t, isXFlashing }:
             </div>
             
             <div className="space-y-0.5">
-              <MiniSlider label="Глубина" value={depth} min={2} max={25} onChange={(v: any) => {
+              <MiniSlider label={t.scene?.depth || "Глубина"} value={depth} min={2} max={25} unit={t.m} onChange={(v: any) => {
                 if (id === 'house') handleUpdate({ houseLength: v });
                 else if (id.startsWith('add_')) {
                   const addId = id.replace('add_', '');
@@ -209,7 +209,7 @@ const ObjectSettingsOverlay = ({ id, house, setHouse, onClose, t, isXFlashing }:
 
         {isGarageOrCarport && (
           <div className="space-y-1">
-            <span className="text-[9px] lg:text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Машины</span>
+            <span className="text-[9px] lg:text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">{t.scene?.cars || "Машины"}</span>
             <div className="flex bg-slate-100 p-0.5 rounded-xl gap-0.5">
               {[1, 2, 3].map(n => (
                 <button 
@@ -233,7 +233,7 @@ const ObjectSettingsOverlay = ({ id, house, setHouse, onClose, t, isXFlashing }:
         )}
 
         <div className="space-y-0.5">
-          <RotationControl label="Поворот" value={rotation} onChange={(v) => {
+          <RotationControl label={t.scene?.rotation || "Поворот"} value={rotation} onChange={(v) => {
             if (id === 'house') handleUpdate({ houseRotation: v });
             else if (id.startsWith('add_')) {
               const addId = id.replace('add_', '');
@@ -248,7 +248,7 @@ const ObjectSettingsOverlay = ({ id, house, setHouse, onClose, t, isXFlashing }:
   return content;
 };
 
-const ObjectLabel = ({ label, width, length, height, onToggleEdit, isEditing, onDragStart }: any) => (
+const ObjectLabel = ({ label, width, length, height, onToggleEdit, isEditing, onDragStart, t }: any) => (
   <Html position={[0, height + 0.2, 0]} center zIndexRange={[50, 60]}>
     <div className="flex flex-col items-center gap-1 pointer-events-none">
       <div 
@@ -263,8 +263,8 @@ const ObjectLabel = ({ label, width, length, height, onToggleEdit, isEditing, on
         <div className="flex flex-col items-center leading-none">
           <span className="text-[6px] font-black text-white uppercase tracking-widest mb-0.5">{label}</span>
           <div className="flex items-center gap-1">
-            <span className="text-[6px] font-black text-orange-400">{(width || 0).toFixed(1)}x{(length || 0).toFixed(1)}м</span>
-            <span className="text-[5px] font-bold text-slate-400">{(width * length || 0).toFixed(1)} м²</span>
+            <span className="text-[6px] font-black text-orange-400">{(width || 0).toFixed(1)}x{(length || 0).toFixed(1)}{t?.m || "m"}</span>
+            <span className="text-[5px] font-bold text-slate-400">{(width * length || 0).toFixed(1)} {t?.sqm || "m²"}</span>
           </div>
         </div>
       </div>
@@ -363,6 +363,7 @@ const LandscapeObject = ({ id, label, pos, color, args, onDragStart, isStepActiv
         onToggleEdit={() => setActiveSettingId(isEditing ? null : id)}
         isEditing={isEditing}
         onDragStart={onDragStart}
+        t={getTranslation(house?.lang || 'ru')}
       />
     </group>
   );
@@ -729,13 +730,14 @@ const SceneContent = ({ house, setHouse, showHouse, currentStep, selectedObjectI
         <group position={[houseX, 0, houseZ]} rotation={[0, house.houseRotation || 0, 0]} onPointerDown={(e) => { e.stopPropagation(); }}>
           <House state={house} selected={selectedObjectId === 'house'} onDragStart={(e) => handleDragStart('house', e)} isTransparent={currentStep === 1} />
           <ObjectLabel 
-            label="ДОМ" 
+            label={t.scene?.house?.toUpperCase() || "ДОМ"} 
             width={house.houseWidth} 
             length={house.houseLength} 
             height={house.floors * 3.2}
             onToggleEdit={() => setActiveSettingId(isHouseEditing ? null : 'house')}
             isEditing={isHouseEditing}
             onDragStart={(e: any) => handleDragStart('house', e)}
+            t={t}
           />
         </group>
       )}
@@ -748,13 +750,14 @@ const SceneContent = ({ house, setHouse, showHouse, currentStep, selectedObjectI
           <group key={add.id} position={[addX, 0, addZ]} rotation={[0, add.rotation, 0]} onPointerDown={(e) => { e.stopPropagation(); }}>
             <House state={{ ...house, houseWidth: add.width, houseLength: add.length, floors: add.floors }} isAddition={true} selected={selectedObjectId === addId} onDragStart={(e) => handleDragStart(addId, e)} isTransparent={currentStep === 1} />
             <ObjectLabel 
-              label={`ПРИСТРОЙКА ${idx + 1}`} 
+              label={`${t.scene?.addition?.toUpperCase() || "ПРИСТРОЙКА"} ${idx + 1}`} 
               width={add.width} 
               length={add.length} 
               height={add.floors * 3.2}
               onToggleEdit={() => setActiveSettingId(isAddEditing ? null : addId)}
               isEditing={isAddEditing}
               onDragStart={(e: any) => handleDragStart(addId, e)}
+              t={t}
             />
           </group>
         );
@@ -856,7 +859,7 @@ const Scene: React.FC<SceneProps> = (props) => {
             }
           }}
           className="w-8 h-8 bg-white/90 backdrop-blur rounded-lg shadow-sm flex items-center justify-center text-slate-600 hover:text-[#ff5f1f] hover:bg-white transition-all border border-slate-200"
-          title="3D Вид"
+          title={t.scene?.view3d || "3D Вид"}
         >
           <i className="fas fa-cube text-sm"></i>
         </button>
@@ -869,7 +872,7 @@ const Scene: React.FC<SceneProps> = (props) => {
             }
           }}
           className="w-8 h-8 bg-white/90 backdrop-blur rounded-lg shadow-sm flex items-center justify-center text-slate-600 hover:text-[#ff5f1f] hover:bg-white transition-all border border-slate-200"
-          title="Вид сверху (План)"
+          title={t.scene?.viewTop || "Вид сверху (План)"}
         >
           <i className="fas fa-map text-sm"></i>
         </button>

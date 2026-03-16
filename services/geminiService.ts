@@ -2,6 +2,8 @@
 import { GoogleGenAI } from "@google/genai";
 import { HouseState } from "../types";
 
+import { getTranslation } from "./i18n";
+
 /**
  * Генератор технического паспорта с использованием Google Gemini API.
  * Формирует профессиональный структурированный текст на основе параметров проекта на выбранном языке.
@@ -34,7 +36,9 @@ export const generateProjectNarrative = async (house: HouseState): Promise<strin
   Explication of rooms:
   ${floorPlanDetails}
   
-  Additional client wishes: ${house.extraWishes || 'none'}`;
+  Additional client wishes: ${house.extraWishes || 'none'}
+  
+  IMPORTANT: You MUST generate the entire output in ${targetLang} language.`;
 
   try {
     // Using gemini-3-pro-preview for complex architectural reasoning and professional narrative tasks.
@@ -143,6 +147,7 @@ export const generateArchitecturalImage = async (
  * Специализируется на г. Алматы, Казахстан.
  */
 export const generateConstructionEstimate = async (house: HouseState): Promise<string> => {
+  const t = getTranslation(house.lang).estimateTable;
   // Цены на 2026 год (в тенге)
   const PRICE_HOUSE = 550000;
   const PRICE_BATH = 343750; // Уменьшено в 2 раза
@@ -179,13 +184,13 @@ export const generateConstructionEstimate = async (house: HouseState): Promise<s
 
   const totalCost = costHouse + costBath + costGarage + costCarport + costTerrace + costFence + costCommunications + costLandscaping;
 
-  const formatCurrency = (num: number) => new Intl.NumberFormat('ru-RU').format(Math.round(num)) + ' ₸';
-  const formatArea = (num: number) => num.toFixed(1) + ' м²';
-  const formatLength = (num: number) => num.toFixed(1) + ' п.м.';
+  const formatCurrency = (num: number) => new Intl.NumberFormat('ru-RU').format(Math.round(num)) + ` ${t.currency}`;
+  const formatArea = (num: number) => num.toFixed(1) + ` ${getTranslation(house.lang).sqm.toLowerCase()}`;
+  const formatLength = (num: number) => num.toFixed(1) + ` ${t.pm}`;
 
   let rowsHtml = `
     <tr>
-      <td>Строительство основного дома (Черновая + Фасад 100%)</td>
+      <td>${t.mainHouse}</td>
       <td>${formatArea(houseArea)}</td>
       <td style="text-align: right;">${formatCurrency(costHouse)}</td>
     </tr>
@@ -194,7 +199,7 @@ export const generateConstructionEstimate = async (house: HouseState): Promise<s
   if (house.hasBath) {
     rowsHtml += `
     <tr>
-      <td>Строительство бани</td>
+      <td>${t.bath}</td>
       <td>${formatArea(bathArea)}</td>
       <td style="text-align: right;">${formatCurrency(costBath)}</td>
     </tr>
@@ -204,7 +209,7 @@ export const generateConstructionEstimate = async (house: HouseState): Promise<s
   if (house.hasGarage) {
     rowsHtml += `
     <tr>
-      <td>Капитальный гараж</td>
+      <td>${t.garage}</td>
       <td>${formatArea(garageArea)}</td>
       <td style="text-align: right;">${formatCurrency(costGarage)}</td>
     </tr>
@@ -214,7 +219,7 @@ export const generateConstructionEstimate = async (house: HouseState): Promise<s
   if (house.hasCarport) {
     rowsHtml += `
     <tr>
-      <td>Навес для авто</td>
+      <td>${t.carport}</td>
       <td>${formatArea(carportArea)}</td>
       <td style="text-align: right;">${formatCurrency(costCarport)}</td>
     </tr>
@@ -224,7 +229,7 @@ export const generateConstructionEstimate = async (house: HouseState): Promise<s
   if (house.hasTerrace) {
     rowsHtml += `
     <tr>
-      <td>Терраса</td>
+      <td>${t.terrace}</td>
       <td>${formatArea(terraceArea)}</td>
       <td style="text-align: right;">${formatCurrency(costTerrace)}</td>
     </tr>
@@ -233,22 +238,22 @@ export const generateConstructionEstimate = async (house: HouseState): Promise<s
 
   rowsHtml += `
     <tr>
-      <td>Устройство забора</td>
+      <td>${t.fence}</td>
       <td>${formatLength(fencePerimeter)}</td>
       <td style="text-align: right;">${formatCurrency(costFence)}</td>
     </tr>
     <tr>
-      <td>Подключение к инженерным коммуникациям</td>
-      <td>1 компл.</td>
+      <td>${t.communications}</td>
+      <td>1 ${t.compl}</td>
       <td style="text-align: right;">${formatCurrency(costCommunications)}</td>
     </tr>
     <tr>
-      <td>Базовое благоустройство территории</td>
+      <td>${t.landscaping}</td>
       <td>${formatArea(freePlotArea)}</td>
       <td style="text-align: right;">${formatCurrency(costLandscaping)}</td>
     </tr>
     <tr>
-      <td>ИТОГО</td>
+      <td>${t.total}</td>
       <td></td>
       <td style="text-align: right;">${formatCurrency(totalCost)}</td>
     </tr>
@@ -258,9 +263,9 @@ export const generateConstructionEstimate = async (house: HouseState): Promise<s
     <table>
       <thead>
         <tr>
-          <th style="text-align: left;">Наименование</th>
-          <th style="text-align: left;">Объем/Площадь</th>
-          <th style="text-align: right;">Итоговая стоимость</th>
+          <th style="text-align: left;">${t.name}</th>
+          <th style="text-align: left;">${t.volume}</th>
+          <th style="text-align: right;">${t.finalCost}</th>
         </tr>
       </thead>
       <tbody>

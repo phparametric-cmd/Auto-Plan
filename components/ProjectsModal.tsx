@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { collection, query, where, getDocs, deleteDoc, doc, setDoc } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 import { HouseState } from '../types';
+import { getTranslation } from '../services/i18n';
 import { signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged, User, signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
 
 enum OperationType {
@@ -69,9 +70,10 @@ interface ProjectsModalProps {
   onClose: () => void;
   currentHouse: HouseState;
   onLoadProject: (house: HouseState) => void;
+  hasStarted: boolean;
 }
 
-const ProjectsModal: React.FC<ProjectsModalProps> = ({ isOpen, onClose, currentHouse, onLoadProject }) => {
+const ProjectsModal: React.FC<ProjectsModalProps> = ({ isOpen, onClose, currentHouse, onLoadProject, hasStarted }) => {
   const [user, setUser] = useState<User | null>(null);
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(false);
@@ -85,6 +87,8 @@ const ProjectsModal: React.FC<ProjectsModalProps> = ({ isOpen, onClose, currentH
   const [isRegistering, setIsRegistering] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
   const [isAuthLoading, setIsAuthLoading] = useState(false);
+
+  const t = getTranslation(currentHouse.lang);
 
   if (throwError) {
     throw throwError;
@@ -124,7 +128,7 @@ const ProjectsModal: React.FC<ProjectsModalProps> = ({ isOpen, onClose, currentH
         }
       } else {
         console.error("Error fetching projects:", err);
-        setError("Не удалось загрузить проекты");
+        setError(t.errorLoadingProjects);
       }
     } finally {
       setLoading(false);
@@ -138,7 +142,7 @@ const ProjectsModal: React.FC<ProjectsModalProps> = ({ isOpen, onClose, currentH
       await signInWithPopup(auth, provider);
     } catch (err: any) {
       console.error("Login error:", err);
-      setAuthError("Ошибка входа через Google. Убедитесь, что домен добавлен в авторизованные (см. инструкцию).");
+      setAuthError(t.googleLoginError);
     }
   };
 
@@ -156,11 +160,12 @@ const ProjectsModal: React.FC<ProjectsModalProps> = ({ isOpen, onClose, currentH
       setPassword('');
     } catch (err: any) {
       console.error("Email auth error:", err);
-      if (err.code === 'auth/email-already-in-use') setAuthError('Этот email уже зарегистрирован');
-      else if (err.code === 'auth/invalid-credential') setAuthError('Неверный email или пароль');
-      else if (err.code === 'auth/weak-password') setAuthError('Пароль слишком простой (минимум 6 символов)');
-      else if (err.code === 'auth/invalid-email') setAuthError('Некорректный формат email');
-      else setAuthError('Ошибка авторизации: ' + err.message);
+      if (err.code === 'auth/email-already-in-use') setAuthError(t.emailAlreadyInUse);
+      else if (err.code === 'auth/invalid-credential') setAuthError(t.invalidEmailOrPassword);
+      else if (err.code === 'auth/weak-password') setAuthError(t.weakPassword);
+      else if (err.code === 'auth/invalid-email') setAuthError(t.invalidEmailFormat);
+      else if (err.code === 'auth/operation-not-allowed') setAuthError((t as any).emailAuthNotEnabled || "Email auth is not enabled in Firebase.");
+      else setAuthError(t.authError + ' ' + err.message);
     } finally {
       setIsAuthLoading(false);
     }
@@ -203,7 +208,7 @@ const ProjectsModal: React.FC<ProjectsModalProps> = ({ isOpen, onClose, currentH
         }
       } else {
         console.error("Error saving project:", err);
-        setError("Не удалось сохранить проект");
+        setError(t.errorSavingProject);
       }
     } finally {
       setSaving(false);
@@ -211,7 +216,7 @@ const ProjectsModal: React.FC<ProjectsModalProps> = ({ isOpen, onClose, currentH
   };
 
   const handleDelete = async (id: string) => {
-    if (!window.confirm("Удалить этот проект?")) return;
+    if (!window.confirm(t.deleteProjectConfirm)) return;
     try {
       await deleteDoc(doc(db, 'projects', id));
       setProjects(projects.filter(p => p.id !== id));
@@ -235,17 +240,17 @@ const ProjectsModal: React.FC<ProjectsModalProps> = ({ isOpen, onClose, currentH
       onClose();
     } catch (err) {
       console.error("Error parsing project data:", err);
-      setError("Ошибка при загрузке проекта");
+      setError(t.errorLoadingProjectData);
     }
   };
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
         <div className="p-6 border-b flex justify-between items-center">
-          <h2 className="text-2xl font-bold">Мои проекты</h2>
+          <h2 className="text-2xl font-bold">{t.myProjects}</h2>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-600 transition-colors">
             <i className="fas fa-times text-xl"></i>
           </button>
@@ -255,14 +260,14 @@ const ProjectsModal: React.FC<ProjectsModalProps> = ({ isOpen, onClose, currentH
           {!user ? (
             <div className="text-center py-6">
               <i className="fas fa-lock text-4xl text-slate-300 mb-4"></i>
-              <h3 className="text-xl font-bold mb-2">Войдите, чтобы сохранять проекты</h3>
-              <p className="text-slate-500 mb-6">Ваши проекты будут надежно сохранены и доступны с любого устройства.</p>
+              <h3 className="text-xl font-bold mb-2">{t.loginToSave}</h3>
+              <p className="text-slate-500 mb-6">{t.projectsSavedSecurely}</p>
               
               <form onSubmit={handleEmailAuth} className="flex flex-col gap-3 max-w-sm mx-auto w-full text-left">
                 {authError && <div className="text-red-500 text-sm bg-red-50 p-3 rounded-lg border border-red-100 text-center">{authError}</div>}
                 
                 <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Email</label>
+                  <label className="block text-xs font-bold text-slate-500 uppercase mb-1">{t.emailLabel}</label>
                   <input 
                     type="email" 
                     placeholder="your@email.com" 
@@ -274,10 +279,10 @@ const ProjectsModal: React.FC<ProjectsModalProps> = ({ isOpen, onClose, currentH
                 </div>
                 
                 <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Пароль</label>
+                  <label className="block text-xs font-bold text-slate-500 uppercase mb-1">{t.passwordLabel}</label>
                   <input 
                     type="password" 
-                    placeholder="Минимум 6 символов" 
+                    placeholder={t.min6Chars} 
                     value={password} 
                     onChange={e => setPassword(e.target.value)} 
                     className="w-full border border-slate-300 p-3 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all" 
@@ -292,7 +297,7 @@ const ProjectsModal: React.FC<ProjectsModalProps> = ({ isOpen, onClose, currentH
                   className="bg-slate-800 hover:bg-slate-900 text-white p-3 rounded-xl font-bold mt-2 transition-colors disabled:opacity-70 flex justify-center items-center gap-2"
                 >
                   {isAuthLoading && <i className="fas fa-spinner fa-spin"></i>}
-                  {isRegistering ? 'Зарегистрироваться' : 'Войти по Email'}
+                  {isRegistering ? t.register : t.loginWithEmail}
                 </button>
                 
                 <button 
@@ -303,12 +308,12 @@ const ProjectsModal: React.FC<ProjectsModalProps> = ({ isOpen, onClose, currentH
                   }} 
                   className="text-sm text-blue-600 hover:underline text-center mt-1"
                 >
-                  {isRegistering ? 'Уже есть аккаунт? Войти' : 'Нет аккаунта? Зарегистрироваться'}
+                  {isRegistering ? t.alreadyHaveAccount : t.noAccountRegister}
                 </button>
                 
                 <div className="relative flex py-4 items-center">
                   <div className="flex-grow border-t border-slate-200"></div>
-                  <span className="flex-shrink-0 mx-4 text-slate-400 text-xs font-bold uppercase">ИЛИ</span>
+                  <span className="flex-shrink-0 mx-4 text-slate-400 text-xs font-bold uppercase">{t.or}</span>
                   <div className="flex-grow border-t border-slate-200"></div>
                 </div>
                 
@@ -318,7 +323,7 @@ const ProjectsModal: React.FC<ProjectsModalProps> = ({ isOpen, onClose, currentH
                   className="bg-white border-2 border-slate-200 hover:bg-slate-50 text-slate-700 px-4 py-3 rounded-xl font-bold transition-colors flex items-center justify-center gap-3"
                 >
                   <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" className="w-5 h-5" />
-                  Войти через Google
+                  {t.loginWithGoogle}
                 </button>
               </form>
             </div>
@@ -334,40 +339,42 @@ const ProjectsModal: React.FC<ProjectsModalProps> = ({ isOpen, onClose, currentH
                     </div>
                   )}
                   <div>
-                    <div className="font-bold">{user.displayName || 'Пользователь'}</div>
+                    <div className="font-bold">{user.displayName || user.email?.split('@')[0] || 'User'}</div>
                     <div className="text-xs text-slate-500">{user.email}</div>
                   </div>
                 </div>
                 <button onClick={handleLogout} className="text-sm text-slate-500 hover:text-red-500 transition-colors font-bold">
-                  Выйти
+                  {t.logout}
                 </button>
               </div>
 
               <div className="flex justify-between items-center">
-                <h3 className="text-lg font-bold">Текущий проект: {currentHouse.name}</h3>
-                <button 
-                  onClick={handleSaveProject}
-                  disabled={saving}
-                  className="bg-[#ff5f1f] hover:bg-[#e04d14] text-white px-4 py-2 rounded-lg font-bold transition-colors flex items-center gap-2 disabled:opacity-50"
-                >
-                  <i className={`fas ${saving ? 'fa-spinner fa-spin' : 'fa-save'}`}></i>
-                  {saving ? 'Сохранение...' : 'Сохранить текущий'}
-                </button>
+                <h3 className="text-lg font-bold">{t.currentProject} {hasStarted ? currentHouse.name : ''}</h3>
+                {hasStarted && (
+                  <button 
+                    onClick={handleSaveProject}
+                    disabled={saving}
+                    className="bg-[#ff5f1f] hover:bg-[#e04d14] text-white px-4 py-2 rounded-lg font-bold transition-colors flex items-center gap-2 disabled:opacity-50"
+                  >
+                    <i className={`fas ${saving ? 'fa-spinner fa-spin' : 'fa-save'}`}></i>
+                    {saving ? t.saving : t.saveCurrent}
+                  </button>
+                )}
               </div>
 
               {error && <div className="text-red-500 text-sm bg-red-50 p-3 rounded-lg">{error}</div>}
 
               <div>
-                <h3 className="text-lg font-bold mb-4 border-b pb-2">Сохраненные проекты ({projects.length})</h3>
+                <h3 className="text-lg font-bold mb-4 border-b pb-2">{t.savedProjects} ({projects.length})</h3>
                 {loading ? (
                   <div className="text-center py-10 text-slate-400">
                     <i className="fas fa-spinner fa-spin text-2xl mb-2"></i>
-                    <p>Загрузка проектов...</p>
+                    <p>{t.loadingProjects}</p>
                   </div>
                 ) : projects.length === 0 ? (
                   <div className="text-center py-10 text-slate-400 bg-slate-50 rounded-xl border border-dashed">
                     <i className="fas fa-folder-open text-3xl mb-2"></i>
-                    <p>У вас пока нет сохраненных проектов</p>
+                    <p>{t.noSavedProjects}</p>
                   </div>
                 ) : (
                   <div className="space-y-3">
@@ -376,7 +383,7 @@ const ProjectsModal: React.FC<ProjectsModalProps> = ({ isOpen, onClose, currentH
                         <div>
                           <div className="font-bold text-lg">{proj.name}</div>
                           <div className="text-xs text-slate-500">
-                            Обновлен: {proj.updatedAt?.toDate().toLocaleString() || 'Неизвестно'}
+                            {t.updatedAt} {proj.updatedAt?.toDate().toLocaleString() || 'Unknown'}
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
@@ -384,7 +391,7 @@ const ProjectsModal: React.FC<ProjectsModalProps> = ({ isOpen, onClose, currentH
                             onClick={() => handleLoad(proj)}
                             className="px-4 py-2 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg font-bold transition-colors text-sm"
                           >
-                            Загрузить
+                            {t.loadProject}
                           </button>
                           <button 
                             onClick={() => handleDelete(proj.id)}
